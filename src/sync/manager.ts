@@ -9,7 +9,7 @@ import { ObsidianLocal } from './obsidianLocal';
 import { emptyReport, emptyState, migrateState, Space, SyncReport, SyncState } from './types';
 import { EncryptionStateError, readKeyfile, SecureRemote, writeKeyfile } from './secureRemote';
 import { b64, Cipher, KEYFILE, createKeyfile, Keyfile, keyMatches, rewrapKeyfile, subKey, unb64, unlockKeyfile } from './crypto';
-import { DeviceCert, DeviceCommand, DeviceRegistry, deviceId, deviceName, devicesFolder, emptyTrust, issueCert, PAIR_FOLDER, PairingOffer, PairPayload, payloadKey, platformName, RegistryKeys, TrustState } from './devices';
+import { DeviceCert, DeviceCommand, DeviceRegistry, deviceId, deviceName, devicesFolder, emptyTrust, isControlPath, legacyDevicesFolder, moveLegacyRegistry, pairFolder, issueCert, PairingOffer, PairPayload, payloadKey, platformName, RegistryKeys, TrustState } from './devices';
 import { newSignKeys, SignKeys } from './crypto';
 import { LogModal, MassDeleteModal } from './modals';
 import type { SyncHub } from './hub';
@@ -92,9 +92,16 @@ export interface EncryptionChoice {
 	kdf: 'argon2id' | 'pbkdf2';
 }
 
+/** Optional callbacks of a reformat: stage messages and the moment the new setting is saved. */
+export interface ReformatHooks {
+	onProgress?: (msg: string) => void;
+	onCommitted?: () => void;
+}
+
 export class SyncManager {
 	status: SyncStatus = 'off';
 	statusDetail = '';
+	private registryMoved = false;
 	state: SyncState;
 	log: LogEntry[] = [];
 	private dirty = new Set<string>();
@@ -436,7 +443,7 @@ export class SyncManager {
 	/** Vault folders already on this account (next to the configured one). */
 	async vaultFolders(): Promise<string[]> {
 		try {
-			return (await this.getInner().vaultFolders?.()) ?? [];
+			return ((await this.getInner().vaultFolders?.()) ?? []).filter((f) => !isControlPath(f));
 		} catch {
 			return [];
 		}
@@ -493,9 +500,9 @@ export class SyncManager {
 	 * is removed, the new key file is written before old files go to the cloud trash.
 	 * @param presync false only when the old data cannot be read anymore (forgotten key).
 	 */
-	async reformat(target: EncryptionChoice | null, presync = true) {
+	async reformat(target: EncryptionChoice | null, presync = true, hooks: ReformatHooks = {}) {
 		try {
-			await this.doReformat(target, presync);
+			await this.doReformat(target, presync, hooks);
 		} catch (e) {
 			this.secure = null;
 			this.setStatus('error', redact(String((e as Error)?.message ?? e)));
@@ -505,12 +512,18 @@ export class SyncManager {
 		}
 	}
 
-	private async doReformat(target: EncryptionChoice | null, presync: boolean) {
+	private async doReformat(target: EncryptionChoice | null, presync: boolean, hooks: ReformatHooks) {
+		const stage = (msg: string) => {
+			this.statusDetail = msg;
+			hooks.onProgress?.(msg);
+			this.emit();
+		};
 		await this.exclusive(async () => {
 			this.stop('syncing');
-			this.statusDetail = tx('Riorganizzo i file nel cloud…');
+			stage(tx('Riorganizzo i file nel cloud…'));
 			const inner = this.getInner();
 			if (presync) {
+				stage(tx('Sincronizzo le ultime modifiche prima di cambiare la cifratura…'));
 				if (!this.secure && !(await this.prepare())) throw new Error(tx('Sblocca prima la cifratura con la chiave principale.'));
 				const report = await this.hub.serial(() => this.engine('block').run(new Set(this.dirty), true));
 				this.dirty.clear();
@@ -519,13 +532,16 @@ export class SyncManager {
 					throw new Error(tx('Alcuni file non sono stati sincronizzati: riprova prima di cambiare la cifratura.'));
 				}
 			}
+			stage(tx('Controllo lo spazio disponibile nel cloud…'));
 			await this.ensureRoomForEverything();
 			const root = (await inner.findRoot()) ?? (await inner.createRoot());
 			const old = await readKeyfile(inner, root.id).catch(() => null);
 			this.resetStateMemory();
 			let keep: string | null = null;
 			if (target) {
+				stage(target.kdf === 'pbkdf2' ? tx('Genero la chiave di cifratura…') : tx('Genero la chiave di cifratura (Argon2id usa 64 MB di memoria: può richiedere qualche secondo)…'));
 				const { keyfile, dek } = await createKeyfile(target.password, target.alg, target.names, target.kdf);
+				stage(tx('Salvo il file della chiave nel cloud…'));
 				const file = await writeKeyfile(inner, root.id, keyfile, old?.file);
 				keep = file.id;
 				this.state.keyKid = keyfile.kid;
@@ -541,9 +557,21 @@ export class SyncManager {
 			this.t.enabled = true;
 			await this.plugin.saveSettings();
 			await this.saveStateNow();
-			for (const f of await inner.listAll(root.id)) {
-				if (f.parentId === root.id && f.id !== keep) await (f.isFolder && inner.trashTree ? inner.trashTree(f.id) : inner.trash(f.id));
-			}
+			// the new setting is saved: the dialog can close, the old copies are removed while the status bar shows progress
+			hooks.onCommitted?.();
+			const oldFiles = (await inner.listAll(root.id)).filter((f) => f.parentId === root.id && f.id !== keep && f.name !== '.ambraia');
+			let done = 0;
+			stage(tx('Sposto nel cestino del cloud i vecchi file: {0} di {1}…', 0, oldFiles.length));
+			const queue = oldFiles.slice();
+			const worker = async () => {
+				for (let f = queue.shift(); f; f = queue.shift()) {
+					await (f.isFolder && inner.trashTree ? inner.trashTree(f.id) : inner.trash(f.id));
+					done++;
+					if (done === oldFiles.length || done % 5 === 0) stage(tx('Sposto nel cestino del cloud i vecchi file: {0} di {1}…', done, oldFiles.length));
+				}
+			};
+			await Promise.all(Array.from({ length: Math.min(4, oldFiles.length) }, worker));
+			this.statusDetail = '';
 			this.secure = null;
 			this.addLog('info', target ? tx('Cartella nel cloud cifrata con {0}.', target.alg) : tx('Cifratura disattivata: i file nel cloud sono ora in chiaro.'));
 		});
@@ -615,7 +643,7 @@ export class SyncManager {
 		if (!this.connected) throw new AuthError('not-connected');
 		if (this.t.encrypt && !this.dek) await this.prepare().catch(() => false);
 		const me = { id: deviceId(this.app), name: deviceName(this.app) };
-		const offer = new PairingOffer(this.controlRemote(PAIR_FOLDER), { provider: this.provider, folder: this.folder, from: me }, async (ack) => {
+		const offer = new PairingOffer(this.controlRemote(pairFolder(this.folder)), { provider: this.provider, folder: this.folder, from: me }, async (ack) => {
 			const dek = this.t.encrypt ? this.dek : null;
 			const reg = await this.registry();
 			const ck = this.circleKey();
@@ -739,7 +767,13 @@ export class SyncManager {
 		const cacheKey = `${this.provider}|${this.folder}|${this.t.encrypt ? this.state.keyKid : 'plain'}`;
 		if (this.registryCache?.key === cacheKey) return this.registryCache.reg;
 		const key = this.t.encrypt && this.dek ? await subKey(this.dek, 'ambraia devices v1') : null;
-		const reg = new DeviceRegistry(this.controlRemote(await devicesFolder(this.folder)), key, this.registryKeys());
+		const place = this.controlRemote(await devicesFolder(this.folder));
+		// 1.0.0 kept the list at the top of the cloud space: moved once into the vault folder
+		if (!this.registryMoved) {
+			this.registryMoved = true;
+			await moveLegacyRegistry(this.controlRemote(await legacyDevicesFolder(this.folder)), place);
+		}
+		const reg = new DeviceRegistry(place, key, this.registryKeys());
 		this.registryCache = { key: cacheKey, reg };
 		return reg;
 	}

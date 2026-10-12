@@ -49,7 +49,7 @@ export interface AmbraiaSettings {
 	notionTheme: boolean;
 	/** Hides the properties block inside notes (CSS only; still editable in the side panel). */
 	hideProperties: boolean;
-	font: 'standard' | 'obsidian' | 'serif' | 'mono';
+	font: 'standard' | 'serif' | 'mono';
 	contentWidth: 'normal' | 'wide' | 'full';
 	showHeader: boolean;
 	bannerHeight: number;
@@ -61,6 +61,8 @@ export interface AmbraiaSettings {
 	autoIcons: boolean;
 	/** The note menu (⋯ in the top right corner) shows only the essential actions. */
 	compactNoteMenu: boolean;
+	/** Links are updated on rename/move without Obsidian's confirmation (Obsidian's own option). */
+	autoUpdateLinks: boolean;
 	// Esplora file
 	folderNotes: boolean;
 	pinned: string[];
@@ -115,8 +117,6 @@ export interface AmbraiaSettings {
 	shareViewerUrl: string;
 	/** ntfy-compatible relay used by live links. */
 	shareRelayUrl: string;
-	/** This device answers the live links of the vault while Obsidian is open. */
-	shareServe: boolean;
 	/** The user has read how live links use the relay. */
 	shareRelayConsent: boolean;
 	// Maintenance
@@ -145,7 +145,10 @@ export interface AmbraiaSettings {
 	aiVaultTopK: number;
 	aiContextChars: number;
 	// Advanced local tools
-	aiWebSearch: 'off' | 'duckduckgo' | 'searxng';
+	/** auto = Google Search via Gemini when a Gemini key is set, otherwise free sources (DuckDuckGo Instant Answers + Wikipedia). */
+	aiWebSearch: 'off' | 'auto' | 'searxng';
+	/** auto = Gemini (key) → YouTube Data API (key) → oEmbed title; title = oEmbed title only. */
+	aiYoutube: 'auto' | 'title';
 	aiSearxngUrl: string;
 	aiWebAccess: boolean;
 	/** Marks notes written by the AI with an `ai-generated` / `ai-assisted` property (EU AI Act art. 50). */
@@ -163,7 +166,6 @@ export interface AmbraiaSettings {
 	weeklyFormat: string;
 	weeklyTemplate: string;
 	calendarWeekStart: 'locale' | 'monday' | 'sunday';
-	calendarWeekNumbers: boolean;
 	calendarDateFields: string;
 	calendarShowTasks: boolean;
 	calendarClickCreates: boolean;
@@ -179,10 +181,11 @@ export const DEFAULT_SETTINGS: AmbraiaSettings = {
 	bannerHeight: 200,
 	iconKey: 'icon',
 	bannerKey: 'banner',
-	minimalUI: false,
+	minimalUI: true,
 	explorerIcons: true,
 	autoIcons: false,
 	compactNoteMenu: true,
+	autoUpdateLinks: true,
 	folderNotes: true,
 	pinned: [],
 	spaces: [],
@@ -190,7 +193,7 @@ export const DEFAULT_SETTINGS: AmbraiaSettings = {
 	expanded: [],
 	newNoteMenu: true,
 	navHidden: [],
-	navCustom: [{ id: 'today', icon: 'calendar-check', command: 'ambraia:daily-today', label: 'Nota di oggi' }],
+	navCustom: [],
 	ribbonCustom: [],
 	slashMenu: true,
 	slashTrigger: '/',
@@ -218,7 +221,6 @@ export const DEFAULT_SETTINGS: AmbraiaSettings = {
 	notifySystem: true,
 	shareViewerUrl: 'https://d4ruerk1.github.io/Obsidian-Ambraia/share/',
 	shareRelayUrl: 'https://ntfy.sh',
-	shareServe: true,
 	shareRelayConsent: false,
 	maintenanceVersion: 0,
 	aiEnabled: false,
@@ -240,7 +242,8 @@ export const DEFAULT_SETTINGS: AmbraiaSettings = {
 	aiHistoryTurns: 12,
 	aiVaultTopK: 8,
 	aiContextChars: 16000,
-	aiWebSearch: 'off',
+	aiWebSearch: 'auto',
+	aiYoutube: 'auto',
 	aiSearxngUrl: '',
 	aiWebAccess: true,
 	aiMarkOutput: true,
@@ -256,7 +259,6 @@ export const DEFAULT_SETTINGS: AmbraiaSettings = {
 	weeklyFormat: 'gggg-[W]ww',
 	weeklyTemplate: '',
 	calendarWeekStart: 'locale',
-	calendarWeekNumbers: false,
 	calendarDateFields: 'data, date, scadenza, due',
 	calendarShowTasks: true,
 	calendarClickCreates: false,

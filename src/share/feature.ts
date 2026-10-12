@@ -82,9 +82,11 @@ export class SharingFeature {
 		});
 	}
 
-	/** Starts or stops answering live links on this device. */
+	/**
+	 * Every device answers the live links of the vault while Obsidian is open. With no link the
+	 * server has nothing to watch and makes no request at all.
+	 */
 	applyServe(restart = false) {
-		if (!this.plugin.settings.shareServe) return this.server.stop();
 		if (restart) this.server.stop();
 		this.server.start();
 	}
@@ -120,15 +122,14 @@ export class SharingFeature {
 		new ShareModal(this, f).open();
 	}
 
-	async create(f: TFile, o: { expires: number | null; profiles: ProfileInput[] }): Promise<ShareRecord> {
+	async create(f: TFile, o: { expires: number | null; starts?: number | null; profiles: ProfileInput[] }): Promise<ShareRecord> {
 		const r = await this.store.create(f.path, f.basename, o);
 		const s = this.plugin.settings;
 		if (!s.shareRelayConsent) {
 			s.shareRelayConsent = true;
 			await this.plugin.saveSettings();
 		}
-		if (!s.shareServe) new Notice(tx('Questo dispositivo non risponde ai link condivisi (Impostazioni → Ambraia → Condivisione): il link si aprirà solo tramite gli altri tuoi dispositivi.'), 8000);
-		else if (Platform.isMobile) new Notice(tx('Sul telefono il link risponde solo mentre Obsidian è aperto in primo piano.'), 6000);
+		if (Platform.isMobile) new Notice(tx('Sul telefono il link risponde solo mentre Obsidian è aperto in primo piano.'), 6000);
 		return r;
 	}
 

@@ -36,3 +36,20 @@ describe.skipIf(!code)('release build', () => {
 		await plugin.onunload();
 	});
 });
+
+describe('store review (1.0.1)', () => {
+	const files = (d: string): string[] => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? files(`${d}/${e.name}`) : e.name.endsWith('.ts') ? [`${d}/${e.name}`] : []));
+	const src = files('src')
+		.filter((f) => !f.endsWith('packs.ts'))
+		.map((f) => fs.readFileSync(f, 'utf8'))
+		.join('\n');
+	it('no private-API patching of Uninstall, no electron.remote, no YouTube/DuckDuckGo scraping', () => {
+		expect(src).not.toMatch(/uninstallPlugin/);
+		expect(src).not.toMatch(/electron[^;\n]*\.remote|remote\?\.dialog/);
+		expect(src).not.toMatch(/captionTracks|timedtext|ytInitialPlayerResponse/);
+		expect(src).not.toMatch(/html\.duckduckgo\.com/);
+	});
+	it('no direct inline style assignments (setCssStyles / setCssProps / CSS classes instead)', () => {
+		expect(src.replace(/style="[^"]*"/g, '')).not.toMatch(/\.style\.[a-zA-Z]+\s*=(?!=)|\.style\.setProperty\(/);
+	});
+});

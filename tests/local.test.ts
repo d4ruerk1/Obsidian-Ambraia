@@ -2,7 +2,7 @@
 import { deflateRawSync } from 'node:zlib';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { FakeApp, installDomShim } from './app-fake';
-import { fetchWeb, fileText, htmlToText, inProject, jsonAt, listProjects, parseProject, remember, setNet, unzip, webSearch, youtubeId, Net, NetRes } from '../src/ai/local';
+import { fetchWeb, fileText, htmlToText, inProject, jsonAt, listProjects, parseProject, remember, searchText, setNet, subtitleText, unzip, webSearch, youtubeId, Net, NetRes } from '../src/ai/local';
 import { chatToMarkdown, markdownToChat } from '../src/ai/chatView';
 import type { HttpReq, Transport } from '../src/ai/client';
 
@@ -142,25 +142,49 @@ describe('web (local fetch)', () => {
 		expect(jsonAt(s, 4)).toEqual({ a: '}{"]', b: [1, { c: 2 }] });
 	});
 
-	it('reads a YouTube transcript from public captions', async () => {
-		const player = { captionTracks: [{ baseUrl: 'https://www.youtube.com/api/timedtext?v=abc&lang=en', languageCode: 'en' }, { baseUrl: 'https://www.youtube.com/api/timedtext?v=abc&lang=it', languageCode: 'it', kind: 'asr' }] };
-		const calls = fakeNet({
-			'watch?v=': { text: `<script>var ytInitialPlayerResponse = {"videoDetails":{"title":"Lezione","author":"Prof"},"captions":{"playerCaptionsTracklistRenderer":${JSON.stringify(player)}}};</script>` },
-			timedtext: { text: JSON.stringify({ events: [{ tStartMs: 0, segs: [{ utf8: 'Ciao' }] }, { tStartMs: 5000, segs: [{ utf8: 'a tutti' }] }, { tStartMs: 65000, segs: [{ utf8: 'dopo un minuto' }] }] }) },
-		});
+	it('YouTube without keys: only the oEmbed title, never the page or the captions', async () => {
+		const calls = fakeNet({ 'youtube.com/oembed': { text: JSON.stringify({ title: 'Lezione', author_name: 'Prof' }) } });
 		const d = await fetchWeb('https://youtu.be/abcdefghijk');
 		expect(d.kind).toBe('youtube');
 		expect(d.title).toBe('Lezione – Prof');
-		expect(d.text).toContain('[0:00] Ciao a tutti');
-		expect(d.text).toContain('[1:05] dopo un minuto');
-		expect(d.text).toContain('(it, automatica)');
-		expect(calls[1].url).toContain('lang=it');
-		expect(calls[1].url).toContain('fmt=json3');
+		expect(d.text).toMatch(/srt\/\.vtt/);
+		expect(calls).toHaveLength(1);
+		expect(calls.some((c) => /timedtext|watch\?v=.*&|captionTracks/.test(c.url) && !c.url.includes('oembed'))).toBe(false);
 	});
 
-	it('explains when a video has no captions', async () => {
-		fakeNet({ 'watch?v=': { text: '<html>nothing</html>' } });
-		await expect(fetchWeb('https://www.youtube.com/watch?v=zzzzzzzzzzz')).rejects.toThrow(/sottotitoli/);
+	it('YouTube with a Gemini key: the official Gemini API watches the video', async () => {
+		const calls = fakeNet({
+			'youtube.com/oembed': { text: JSON.stringify({ title: 'Lezione' }) },
+			'gemini-2.5-flash:generateContent': { text: JSON.stringify({ candidates: [{ content: { parts: [{ text: '[0:00] Ciao a tutti' }] } }] }) },
+		});
+		const d = await fetchWeb('https://www.youtube.com/watch?v=abcdefghij1', { geminiKey: 'g-key' });
+		expect(d.text).toContain('[0:00] Ciao a tutti');
+		expect(d.text).toContain('Google Gemini');
+		const g = calls.find((c) => c.url.includes('generateContent'))!;
+		expect(g.init.headers['x-goog-api-key']).toBe('g-key');
+		expect(JSON.parse(g.init.body).contents[0].parts[0].file_data.file_uri).toBe('https://www.youtube.com/watch?v=abcdefghij1');
+		// "title only" never sends the video to Gemini
+		const n = calls.length;
+		await fetchWeb('https://www.youtube.com/watch?v=abcdefghij2', { geminiKey: 'g-key', youtube: 'title' });
+		expect(calls.slice(n).some((c) => c.url.includes('generateContent'))).toBe(false);
+	});
+
+	it('YouTube with a Data API key: title, duration and description; Gemini errors fall back', async () => {
+		fakeNet({
+			'youtube.com/oembed': { status: 404 },
+			'generateContent': { status: 429, text: JSON.stringify({ error: { message: 'quota' } }) },
+			'googleapis.com/youtube/v3/videos': { text: JSON.stringify({ items: [{ snippet: { title: 'Corso', channelTitle: 'Uni', description: 'Indice del corso', publishedAt: '2024-05-01T00:00:00Z' }, contentDetails: { duration: 'PT1H2M3S' } }] }) },
+		});
+		const d = await fetchWeb('https://www.youtube.com/watch?v=abcdefghij3', { geminiKey: 'g', youtubeKey: 'y' });
+		expect(d.title).toBe('Corso – Uni');
+		expect(d.text).toContain('1:02:03');
+		expect(d.text).toContain('Indice del corso');
+	});
+
+	it('reads subtitle files (.srt/.vtt) as text with timestamps', () => {
+		const srt = '1\n00:00:01,000 --> 00:00:03,000\nCiao <i>a tutti</i>\n\n2\n00:00:03,000 --> 00:00:05,000\nCiao <i>a tutti</i>\n\n3\n00:01:05,000 --> 00:01:07,000\noggi parliamo di Roma';
+		expect(subtitleText(srt)).toBe('[0:01] Ciao a tutti\n[1:05] oggi parliamo di Roma');
+		expect(subtitleText('WEBVTT\n\n00:00.500 --> 00:02.000\nUno')).toBe('[0:00] Uno');
 	});
 
 	it('reads X posts, web pages and online PDFs; caches pages; reports HTTP errors', async () => {
@@ -185,17 +209,34 @@ describe('web (local fetch)', () => {
 		await expect(fetchWeb('https://esempio.it/errore')).rejects.toThrow(/HTTP 500/);
 	});
 
-	it('searches DuckDuckGo (no key) and SearXNG; refuses when off', async () => {
-		const ddg = `<div class="result"><a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fit.wikipedia.org%2Fwiki%2FRoma&amp;rut=x">Roma - <b>Wikipedia</b></a><a class="result__snippet" href="#">Capitale d&#39;Italia</a></div>
-		<div class="result"><a class="result__a" href="https://duckduckgo.com/y.js?ad_domain=ads">Pubblicità</a><a class="result__snippet">ad</a></div>`;
-		const calls = fakeNet({ 'html.duckduckgo.com': { text: ddg }, 'localhost:8888/search': { text: JSON.stringify({ results: [{ title: 'R', url: 'https://r.it', content: 'c' }] }) } });
-		const hits = await webSearch({ aiWebSearch: 'duckduckgo', aiSearxngUrl: '' }, 'roma');
-		expect(hits).toEqual([{ title: 'Roma - Wikipedia', url: 'https://it.wikipedia.org/wiki/Roma', snippet: "Capitale d'Italia" }]);
-		expect(calls[0].init.method).toBe('POST');
-		expect(await webSearch({ aiWebSearch: 'searxng', aiSearxngUrl: 'http://localhost:8888/' }, 'roma')).toEqual([{ title: 'R', url: 'https://r.it', snippet: 'c' }]);
-		expect(calls[1].url).toBe('http://localhost:8888/search?format=json&q=roma');
-		await expect(webSearch({ aiWebSearch: 'off', aiSearxngUrl: '' }, 'x')).rejects.toThrow(/disattivata/);
-		await expect(webSearch({ aiWebSearch: 'searxng', aiSearxngUrl: '' }, 'x')).rejects.toThrow(/SearXNG/);
+	it('web search: Google via Gemini when a key is set, free official APIs otherwise, SearXNG on request', async () => {
+		const calls = fakeNet({
+			'gemini-2.5-flash:generateContent': { text: JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Roma è la capitale.' }] }, groundingMetadata: { webSearchQueries: ['capitale italia'], searchEntryPoint: { renderedContent: '<div>chips</div>' }, groundingChunks: [{ web: { uri: 'https://r.example/1', title: 'wikipedia.org' } }] } }] }) },
+			'api.duckduckgo.com': { text: JSON.stringify({ Heading: 'Roma', AbstractText: 'Capitale d’Italia', AbstractURL: 'https://it.wikipedia.org/wiki/Roma', RelatedTopics: [] }) },
+			'wikipedia.org/w/api.php': { text: JSON.stringify({ query: { search: [{ title: 'Roma', snippet: '<span class="searchmatch">Roma</span> è' }, { title: 'Colosseo', snippet: 'anfiteatro' }] } }) },
+			'localhost:8888/search': { text: JSON.stringify({ results: [{ title: 'R', url: 'https://r.it', content: 'c' }] }) },
+		});
+		const g = await webSearch({ mode: 'auto', geminiKey: 'k' }, 'capitale italia');
+		expect(g.engine).toBe('google');
+		expect(g.answer).toBe('Roma è la capitale.');
+		expect(g.hits[0].url).toBe('https://r.example/1');
+		expect(g.suggestions).toBe('<div>chips</div>');
+		expect(JSON.parse(calls[0].init.body).tools).toEqual([{ google_search: {} }]);
+		const f = await webSearch({ mode: 'auto', lang: 'it' }, 'roma');
+		expect(f.engine).toBe('free');
+		expect(f.hits.map((h) => h.url).slice(0, 3)).toEqual(['https://it.wikipedia.org/wiki/Roma', 'https://it.wikipedia.org/wiki/Colosseo', 'https://en.wikipedia.org/wiki/Roma']);
+		expect(searchText(f)).toContain('Capitale d’Italia');
+		expect((await webSearch({ mode: 'searxng', searxngUrl: 'http://localhost:8888/' }, 'roma')).hits).toEqual([{ title: 'R', url: 'https://r.it', snippet: 'c' }]);
+		await expect(webSearch({ mode: 'off' }, 'x')).rejects.toThrow(/disattivata/);
+		await expect(webSearch({ mode: 'searxng', searxngUrl: '' }, 'x')).rejects.toThrow(/SearXNG/);
+		expect(calls.some((c) => c.url.includes('html.duckduckgo.com'))).toBe(false);
+	});
+
+	it('web search: when Gemini fails (quota), the free sources answer', async () => {
+		fakeNet({ generateContent: { status: 429, text: '{}' }, 'api.duckduckgo.com': { text: '{}' }, 'wikipedia.org/w/api.php': { text: JSON.stringify({ query: { search: [{ title: 'X', snippet: '' }] } }) } });
+		const r = await webSearch({ mode: 'auto', geminiKey: 'k', lang: 'en' }, 'x');
+		expect(r.engine).toBe('free');
+		expect(r.hits).toHaveLength(1);
 	});
 });
 
@@ -267,6 +308,7 @@ async function setup() {
 describe('AI with local Plus features', () => {
 	it('offers web tools only when enabled', async () => {
 		const { plugin } = await setup();
+		plugin.settings.aiWebSearch = 'off';
 		const q = queued(say('ok'));
 		plugin.ai.transport = q.t;
 		await plugin.ai.run([{ role: 'user', content: 'ciao' }], 'agent');
@@ -274,7 +316,8 @@ describe('AI with local Plus features', () => {
 		expect(names).toContain('read_web_page');
 		expect(names).not.toContain('web_search');
 		expect(names).not.toContain('update_memory');
-		plugin.settings.aiWebSearch = 'duckduckgo';
+		plugin.settings.aiWebSearch = 'searxng';
+		plugin.settings.aiSearxngUrl = 'http://localhost:8888';
 		plugin.settings.aiMemory = true;
 		plugin.settings.aiWebAccess = false;
 		const q2 = queued(say('ok'));

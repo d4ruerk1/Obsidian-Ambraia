@@ -881,7 +881,7 @@ body.ambraia-link-icons .ambraia-link-icon + .cm-hmd-internal-link { font-weight
 .ambraia-calendar { position: relative; padding: 12px 14px 20px; font-size: 13px; container-type: inline-size; --calv-gap: 4px; --calv-radius: 10px; }
 .ambraia-calv-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 12px; min-width: 0; flex-wrap: wrap; row-gap: 6px; }
 .ambraia-calv-title { display: flex; align-items: center; min-width: 0; flex: 1 1 auto; position: relative; }
-.ambraia-calv-month { display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%; min-width: 0; background: transparent; box-shadow: none; border: none; height: auto; padding: 4px 8px; margin-left: -8px; border-radius: 8px; color: var(--text-normal); cursor: pointer; }
+.ambraia-calv-month { display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%; min-width: 0; background: transparent; box-shadow: none; border: none; height: auto; padding: 4px 8px; border-radius: 8px; color: var(--text-normal); cursor: pointer; }
 .ambraia-calv-month-name { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .ambraia-calv-year { color: var(--text-muted); white-space: nowrap; font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .ambraia-calv-month-caret { display: inline-flex; align-self: center; color: var(--text-faint); }
@@ -1104,58 +1104,58 @@ body.ambraia-theme .canvas-controls .canvas-control-group { border-radius: 8px; 
 
 /* ---------- support reminder (small, dismissible, bottom corner) ---------- */
 
-/* ------------------------------------------------------------------ settings: floating horizontal tabs */
+/* ------------------------------------------------------------------ settings: horizontal tabs */
+/* Obsidian's own colours: a quiet segmented bar, the active tab is a raised "pill" that slides */
 .ambraia-set-tabs-wrap {
-	/* scrolls away with the page (not sticky) and sits right under the title of the settings */
 	position: relative; z-index: 1;
 	display: flex; justify-content: center;
 	padding: 0 0 14px; margin: calc(-1 * var(--size-4-3, 12px)) 0 6px;
+	--ambraia-tabs-fade: 28px;
 }
 .ambraia-set-tabs {
 	position: relative; isolation: isolate;
-	display: flex; gap: 2px; padding: 4px; max-width: 100%;
-	overflow-x: auto; scrollbar-width: none; touch-action: pan-y;
-	border-radius: 999px;
-	/* opaque: the content never shows through */
-	background: var(--background-secondary);
+	display: flex; gap: 2px; padding: 3px; max-width: 100%;
+	overflow-x: auto; scrollbar-width: none; touch-action: pan-y; overscroll-behavior-x: contain;
+	scroll-behavior: smooth;
+	border-radius: var(--radius-l, 10px);
+	background: var(--background-modifier-hover);
 	border: 1px solid var(--background-modifier-border);
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 14px rgba(0, 0, 0, 0.08);
-	user-select: none;
+	user-select: none; -webkit-user-select: none;
 }
+/* edges fade out when more tabs are hidden on that side */
+.ambraia-set-tabs-wrap.can-scroll-end .ambraia-set-tabs { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--ambraia-tabs-fade)), transparent); mask-image: linear-gradient(to right, #000 calc(100% - var(--ambraia-tabs-fade)), transparent); }
+.ambraia-set-tabs-wrap.can-scroll-start .ambraia-set-tabs { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--ambraia-tabs-fade)); mask-image: linear-gradient(to right, transparent, #000 var(--ambraia-tabs-fade)); }
+.ambraia-set-tabs-wrap.can-scroll-start.can-scroll-end .ambraia-set-tabs { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--ambraia-tabs-fade), #000 calc(100% - var(--ambraia-tabs-fade)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--ambraia-tabs-fade), #000 calc(100% - var(--ambraia-tabs-fade)), transparent); }
 .ambraia-set-tabs::-webkit-scrollbar { display: none; }
 .ambraia-set-tab {
 	position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
-	height: 32px; padding: 0 14px; border-radius: 999px; border: none; box-shadow: none;
+	height: 30px; padding: 0 13px; border-radius: calc(var(--radius-l, 10px) - 3px); border: none; box-shadow: none;
 	background: transparent !important; color: var(--text-muted); cursor: pointer; white-space: nowrap;
 	font-size: var(--font-ui-small); font-weight: 500;
-	transition: color 0.2s;
+	transition: color 0.2s ease;
 }
 .ambraia-set-tab:hover, .ambraia-set-tab.is-hover { color: var(--text-normal); }
 .ambraia-set-tab:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 1px; }
-.ambraia-set-tab.is-active { color: var(--text-normal); font-weight: 600; }
+.ambraia-set-tab.is-active { color: var(--text-normal); }
 .ambraia-set-tab.is-active .ambraia-set-tab-icon { color: var(--interactive-accent); }
-.ambraia-set-tabs.is-dragging .ambraia-set-tab.is-active:not(.is-hover) { color: var(--text-muted); font-weight: 500; }
-/* "liquid glass" drop under the active tab: slides with a spring, follows the pointer while dragging */
+.ambraia-set-tabs.is-dragging { cursor: grabbing; }
+.ambraia-set-tabs.is-dragging .ambraia-set-tab { cursor: grabbing; }
+.ambraia-set-tabs.is-dragging .ambraia-set-tab.is-active:not(.is-hover) { color: var(--text-muted); }
+.ambraia-set-tabs.is-dragging .ambraia-set-tab.is-active:not(.is-hover) .ambraia-set-tab-icon { color: inherit; }
+/* the pill under the active tab */
 .ambraia-set-tabs-glider {
-	position: absolute; z-index: 0; top: 4px; bottom: 4px; left: 0; width: 0;
-	border-radius: 999px; pointer-events: none;
-	background:
-		linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.12) 55%, rgba(255, 255, 255, 0.28)),
-		color-mix(in srgb, var(--interactive-accent) 16%, var(--background-primary));
-	border: 1px solid color-mix(in srgb, var(--interactive-accent) 30%, transparent);
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
-	backdrop-filter: blur(6px) saturate(1.6);
-	transition: transform 0.42s cubic-bezier(0.34, 1.45, 0.5, 1), width 0.32s cubic-bezier(0.34, 1.3, 0.5, 1), scale 0.2s ease;
+	position: absolute; z-index: 0; top: 3px; bottom: 3px; left: 0; width: 0;
+	border-radius: calc(var(--radius-l, 10px) - 3px); pointer-events: none;
+	background: var(--background-primary);
+	box-shadow: 0 0 0 1px var(--background-modifier-border), 0 1px 3px rgba(0, 0, 0, 0.08);
+	transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+	will-change: transform, width;
 }
-.theme-dark .ambraia-set-tabs-glider {
-	background:
-		linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03) 55%, rgba(255, 255, 255, 0.08)),
-		color-mix(in srgb, var(--interactive-accent) 24%, var(--background-secondary));
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 10px rgba(0, 0, 0, 0.35);
-}
+.theme-dark .ambraia-set-tabs-glider { background: var(--background-modifier-active-hover, var(--background-secondary-alt)); box-shadow: 0 0 0 1px var(--background-modifier-border), 0 1px 3px rgba(0, 0, 0, 0.3); }
 .ambraia-set-tabs-glider.is-instant { transition: none; }
-.ambraia-set-tabs.is-dragging .ambraia-set-tabs-glider { transition: width 0.3s, scale 0.2s ease; scale: 1.08 1.14; }
-@media (prefers-reduced-motion: reduce) { .ambraia-set-tabs-glider { transition: none; } }
+.ambraia-set-tabs-glider.is-hidden { opacity: 0; }
+.ambraia-set-tabs.is-dragging .ambraia-set-tabs-glider { transition: transform 0.12s ease-out, width 0.2s ease-out; }
+@media (prefers-reduced-motion: reduce) { .ambraia-set-tabs-glider, .ambraia-set-tabs { transition: none; scroll-behavior: auto; } }
 .ambraia-set-tab-icon { display: inline-flex; }
 .ambraia-set-tab-icon svg { width: 15px; height: 15px; }
 .ambraia-set-tab-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); flex-shrink: 0; }
@@ -1172,27 +1172,31 @@ body.ambraia-theme .canvas-controls .canvas-control-group { border-radius: 8px; 
 	.ambraia-set-tab:not(.is-active) .ambraia-set-tab-label { display: none; }
 }
 
+/* text in Ambraia's settings can be selected and copied (the tab bar and buttons stay as they are) */
+.ambraia-settings, .ambraia-settings .setting-item-name, .ambraia-settings .setting-item-description, .ambraia-settings p, .ambraia-settings li { user-select: text; -webkit-user-select: text; }
+.ambraia-settings button, .ambraia-settings .clickable-icon, .ambraia-settings .checkbox-container { user-select: none; -webkit-user-select: none; }
+/* Obsidian's floating tooltips are not shown over Ambraia's settings: descriptions are already on screen */
+body:has(.ambraia-settings:hover) .tooltip { display: none !important; }
 
 /* ------------------------------------------------------------------ settings: credits */
-.ambraia-set-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; margin: 28px 0 8px; padding: 14px 16px; border-radius: 12px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); font-size: var(--font-ui-smaller); color: var(--text-muted); }
-.ambraia-set-footer-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.ambraia-set-footer-logo { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 9px; color: #fff; background: linear-gradient(135deg, #f0a43a, #d9692b); flex: none; }
-.ambraia-set-footer-logo svg { width: 17px; height: 17px; }
+.ambraia-set-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin: 28px 0 8px; padding: 12px 14px; border-radius: var(--radius-m, 8px); border-top: 1px solid var(--background-modifier-border); font-size: var(--font-ui-smaller); color: var(--text-muted); }
+.ambraia-set-footer-who { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
 .ambraia-set-footer-name { color: var(--text-normal); font-weight: 600; font-size: var(--font-ui-small); }
 .ambraia-set-footer-by { color: var(--text-faint); }
-.ambraia-set-footer-links { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
-.ambraia-set-footer-link { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: 7px; color: var(--text-muted) !important; text-decoration: none !important; }
+.ambraia-set-footer-links { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin-left: auto; }
+.ambraia-set-footer-link { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px; border-radius: var(--radius-s, 6px); color: var(--text-muted) !important; text-decoration: none !important; white-space: nowrap; }
 .ambraia-set-footer-link:hover { background: var(--background-modifier-hover); color: var(--text-normal) !important; }
-.ambraia-set-footer-link svg { width: 14px; height: 14px; }
-.ambraia-donate { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 7px; border: 1px solid var(--background-modifier-border); background: var(--background-primary); color: var(--text-normal) !important; text-decoration: none !important; font-weight: 500; }
-.ambraia-donate:hover { background: var(--background-modifier-hover); }
-.ambraia-donate-icon { display: inline-flex; color: #d9692b; }
-.ambraia-donate-icon svg { width: 14px; height: 14px; }
-@media (max-width: 560px) { .ambraia-set-footer-links { margin-left: 0; } }
+.ambraia-set-footer-link-icon { display: inline-flex; }
+.ambraia-set-footer-link svg { width: 13px; height: 13px; }
+.ambraia-set-footer-link.ambraia-donate .ambraia-set-footer-link-icon { color: var(--color-red, #e5484d); }
+@media (max-width: 560px) { .ambraia-set-footer-links { margin-left: -8px; } }
 .ambraia-set-reset { margin-top: 18px; border-top: 1px solid var(--background-modifier-border); padding-top: 14px; }
 
 /* ------------------------------------------------------------------ brand marks */
+/* every mark in one colour (the service's) on a lightly tinted badge */
 .ambraia-brand { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; border-radius: 9px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); color: var(--text-normal); }
+.ambraia-brand.is-tinted { color: var(--ambraia-brand); background: color-mix(in srgb, var(--ambraia-brand) 10%, var(--background-primary)); border-color: color-mix(in srgb, var(--ambraia-brand) 22%, transparent); }
+.theme-dark .ambraia-brand.is-tinted { color: color-mix(in srgb, var(--ambraia-brand) 75%, #fff); background: color-mix(in srgb, var(--ambraia-brand) 18%, var(--background-primary)); }
 .ambraia-brand svg { width: 18px; height: 18px; }
 .ambraia-brand.is-initial { background: var(--ambraia-brand, var(--interactive-accent)); border-color: transparent; color: #fff; font-weight: 700; font-size: 15px; }
 .ambraia-brand.is-inline { width: 22px; height: 22px; border-radius: 6px; margin-right: 8px; vertical-align: middle; font-size: 11px; }
@@ -1359,3 +1363,171 @@ body.ambraia-theme .canvas-controls .canvas-control-group { border-radius: 8px; 
 .ambraia-share-profile { border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); padding: 0 var(--size-4-3); margin-bottom: var(--size-4-2); }
 .ambraia-share-profile .setting-item:first-child { border-top: none; }
 .ambraia-share-editor { width: 100%; min-height: 40vh; font-family: var(--font-monospace); }
+
+
+/* ================================================================== 1.0.1 */
+
+/* ---------- help buttons: centred on the text line they belong to */
+.ambraia-help-btn { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; vertical-align: -4px; border-radius: 5px; flex: none; }
+.ambraia-help-btn svg { width: 14px; height: 14px; }
+.setting-item-name .ambraia-help-btn, .ambraia-help-row .ambraia-help-btn, .ambraia-set-group-title .ambraia-help-btn { margin-inline-start: 6px; vertical-align: -4px; }
+
+/* ---------- Obsidian Sync: its idle icon is hidden while Ambraia is the sync in use */
+body.ambraia-hide-native-sync .status-bar-item.plugin-sync { display: none !important; }
+
+/* ---------- AI chat: the composer stays above Obsidian's status bar in the right sidebar */
+body:not(.is-mobile) .mod-right-split .ambraia-ai-chat { padding-bottom: calc(var(--status-bar-height, 24px) + 6px); }
+body:not(.is-mobile) .mod-right-split .ambraia-ai-composer { margin-bottom: 4px !important; }
+
+/* ---------- calendar: header on the same columns as the days */
+.ambraia-calv-head { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--calv-gap); align-items: center; justify-content: stretch; margin-bottom: 10px; }
+.ambraia-calv-head.has-weeks { grid-template-columns: 24px repeat(7, minmax(0, 1fr)); }
+.ambraia-calv-head-wk { display: none; }
+.ambraia-calv-head.has-weeks .ambraia-calv-head-wk { display: block; }
+.ambraia-calv-head .ambraia-calv-prev { grid-column: 1; justify-self: center; }
+.ambraia-calv-head.has-weeks .ambraia-calv-prev { grid-column: 2; }
+.ambraia-calv-head .ambraia-calv-title { grid-column: 2 / span 5; justify-content: center; min-width: 0; }
+.ambraia-calv-head.has-weeks .ambraia-calv-title { grid-column: 3 / span 5; }
+.ambraia-calv-head .ambraia-calv-next { grid-column: 7; justify-self: center; }
+.ambraia-calv-head.has-weeks .ambraia-calv-next { grid-column: 9; }
+.ambraia-calv-head .ambraia-calv-btn { width: 28px; padding: 0; }
+.ambraia-calv-month { justify-content: center; max-width: 100%; overflow: hidden; }
+.ambraia-calv-month-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ambraia-calv-year, .ambraia-calv-month-caret { flex: none; }
+/* month / year picker: under the title, with "Today" and the guide at the bottom */
+.ambraia-calv-title .ambraia-calv-pop { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
+.ambraia-calv-pop-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--ob-border, var(--background-modifier-border)); }
+.ambraia-calv-pop-today { height: 26px; padding: 0 12px; border-radius: 7px; font-size: 12.5px; font-weight: 500; background: var(--ob-hover, var(--background-modifier-hover)); box-shadow: none; border: none; color: var(--text-normal); cursor: pointer; }
+.ambraia-calv-pop-today:hover { color: var(--ob-blue, var(--interactive-accent)); }
+.ambraia-calv-pop-help { height: 26px; width: 26px; padding: 0; background: transparent; box-shadow: none; color: var(--text-faint); }
+.ambraia-calv-pop-help svg { width: 15px; height: 15px; }
+/* dots: one blue per task or page (max 3), three red when there are more */
+.ambraia-calv-dot.is-busy { background: var(--ob-blue, var(--interactive-accent)); }
+.ambraia-calv-dot.is-full { background: var(--ob-red, var(--color-red)); }
+.ambraia-calv-day.is-selected .ambraia-calv-dot.is-busy { background: currentColor; }
+.ambraia-calv-tips ul { margin-top: 2px; }
+.ambraia-calv-quick { cursor: text; }
+.ambraia-calv-quick-add { width: 22px; height: 22px; padding: 0; border-radius: 6px; flex: none; display: inline-flex; align-items: center; justify-content: center; background: transparent; box-shadow: none; color: var(--text-faint); cursor: pointer; }
+.ambraia-calv-quick-add:hover { color: var(--ob-blue, var(--interactive-accent)); background: var(--ob-hover, var(--background-modifier-hover)); }
+.ambraia-calv-quick-add svg { width: 15px; height: 15px; }
+
+/* ---------- sharing: cards */
+.ambraia-share-modal { width: min(640px, 94vw); }
+.ambraia-share-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ambraia-share-title-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: none; border-radius: 9px; color: var(--interactive-accent); background: color-mix(in srgb, var(--interactive-accent) 12%, var(--background-primary)); }
+.ambraia-share-title-icon svg { width: 17px; height: 17px; }
+.ambraia-share-title-main { font-weight: 600; font-size: var(--font-ui-medium); line-height: 1.25; }
+.ambraia-share-title-sub { font-size: var(--font-ui-smaller); color: var(--text-muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ambraia-share-intro { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-m); background: var(--background-secondary); color: var(--text-muted); font-size: var(--font-ui-small); line-height: 1.45; }
+.ambraia-share-intro-icon { display: inline-flex; color: var(--color-green, var(--interactive-accent)); flex: none; padding-top: 1px; }
+.ambraia-share-intro-icon svg { width: 16px; height: 16px; }
+.ambraia-share-card { border: 1px solid var(--background-modifier-border); border-radius: var(--radius-l, 10px); background: var(--background-primary); overflow: hidden; }
+.ambraia-share-card-head { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px 4px; }
+.ambraia-share-card-icon { display: inline-flex; color: var(--text-muted); flex: none; padding-top: 2px; }
+.ambraia-share-card-icon svg { width: 16px; height: 16px; }
+.ambraia-share-card-text { min-width: 0; }
+.ambraia-share-card-title { font-weight: 600; font-size: var(--font-ui-small); color: var(--text-normal); }
+.ambraia-share-card-desc { font-size: var(--font-ui-smaller); color: var(--text-muted); line-height: 1.4; margin-top: 2px; }
+.ambraia-share-card-body { padding: 0 14px 12px; }
+.ambraia-share-card-body > .setting-item { padding: 8px 0; border-top: 1px solid var(--background-modifier-border); }
+.ambraia-share-card-body > .setting-item:first-child { border-top: none; }
+.ambraia-share-when { margin: 6px 0 0; padding: 8px 10px; border-radius: var(--radius-s); background: var(--background-secondary); font-size: var(--font-ui-small); color: var(--text-normal); }
+.ambraia-share-limits { display: flex; gap: 8px; margin-top: 8px; font-size: var(--font-ui-smaller); color: var(--text-muted); line-height: 1.45; }
+.ambraia-share-limits-icon { display: inline-flex; flex: none; padding-top: 2px; color: var(--text-faint); }
+.ambraia-share-limits-icon svg { width: 14px; height: 14px; }
+.ambraia-share-limits ul { margin: 0; padding-inline-start: 16px; }
+.ambraia-share-limits li { margin: 1px 0; }
+.ambraia-share-profile { border-radius: var(--radius-m); padding: 4px 12px; margin: 8px 0 0; background: var(--background-primary-alt, var(--background-secondary)); }
+.ambraia-share-profile-top { display: flex; align-items: center; gap: 8px; padding: 6px 0 2px; }
+.ambraia-share-profile-icon { display: inline-flex; color: var(--text-muted); flex: none; }
+.ambraia-share-profile-icon svg { width: 15px; height: 15px; }
+.ambraia-share-profile-name { flex: 1; min-width: 0; font-weight: 600; background: transparent !important; border: 1px solid transparent !important; box-shadow: none !important; padding: 2px 6px; height: 28px; border-radius: 6px; }
+.ambraia-share-profile-name:hover, .ambraia-share-profile-name:focus { border-color: var(--background-modifier-border) !important; background: var(--background-primary) !important; }
+.ambraia-share-profile .setting-item { padding: 6px 0; border-top: 1px solid var(--background-modifier-border); }
+.ambraia-share-add { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; height: 30px; padding: 0 12px; border-radius: 8px; border: 1px dashed var(--background-modifier-border-hover, var(--background-modifier-border)); background: transparent; box-shadow: none; color: var(--text-muted); cursor: pointer; }
+.ambraia-share-add:hover { color: var(--text-normal); border-style: solid; background: var(--background-modifier-hover); }
+.ambraia-share-add svg { width: 14px; height: 14px; }
+.ambraia-share-footer { position: sticky; bottom: calc(-1 * var(--size-4-4, 16px)); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin: 4px calc(-1 * var(--size-4-4, 16px)) calc(-1 * var(--size-4-4, 16px)); padding: 12px var(--size-4-4, 16px); background: var(--background-primary); border-top: 1px solid var(--background-modifier-border); }
+.ambraia-share-footer .ambraia-share-status { flex: 1 1 200px; min-width: 0; }
+.ambraia-share-footer-buttons { display: flex; gap: 8px; margin-left: auto; }
+.ambraia-share-result { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: var(--radius-l, 10px); border: 1px solid color-mix(in srgb, var(--color-green, #2f9e44) 35%, transparent); background: color-mix(in srgb, var(--color-green, #2f9e44) 7%, var(--background-primary)); }
+.ambraia-share-result-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.ambraia-share-result-icon { display: inline-flex; color: var(--color-green, #2f9e44); }
+.ambraia-share-result-icon svg { width: 17px; height: 17px; }
+.ambraia-share-result-line { display: flex; gap: 8px; }
+.ambraia-share-result-line button { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.ambraia-share-result-line button svg { width: 14px; height: 14px; }
+.ambraia-share-linkinfo { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.ambraia-share-linkinfo .ambraia-share-chip { margin: 0; }
+.ambraia-share-copy-small { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; margin-left: auto; font-size: var(--font-ui-smaller); }
+.ambraia-share-copy-small svg { width: 13px; height: 13px; }
+.ambraia-share-revoked { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: var(--radius-m); background: rgba(var(--color-red-rgb), 0.08); color: var(--color-red); font-size: var(--font-ui-small); }
+.ambraia-share-row { flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 12px; border-radius: var(--radius-l, 10px); background: var(--background-primary); }
+.ambraia-share-row:hover { border-color: var(--background-modifier-border-hover, var(--background-modifier-border)); }
+.ambraia-share-row.is-ended { opacity: 0.65; }
+.ambraia-share-row-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ambraia-share-row-actions .clickable-icon { width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.ambraia-share-profiles { display: flex; flex-wrap: wrap; gap: 6px; padding-inline-start: 30px; }
+.ambraia-share-pchip { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 2px 8px; border-radius: 999px; background: var(--background-modifier-hover); font-size: var(--font-ui-smaller); }
+.ambraia-share-pchip-icon { display: inline-flex; color: var(--text-muted); }
+.ambraia-share-pchip-icon svg { width: 12px; height: 12px; }
+.ambraia-share-pchip-name { font-weight: 600; color: var(--text-normal); }
+.ambraia-share-pchip-meta { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- template gallery: calmer, more "document" look */
+.ambraia-tpl-modal { border-radius: 14px; overflow: hidden; }
+.ambraia-tpl-modal .modal-title { font-size: var(--font-ui-large); font-weight: 650; letter-spacing: -0.01em; }
+.ambraia-tpl-search input { background: var(--background-secondary); border: 1px solid transparent; box-shadow: none; transition: border-color 0.15s, background 0.15s; }
+.ambraia-tpl-search input:focus { background: var(--background-primary); border-color: var(--interactive-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 15%, transparent); }
+.ambraia-tpl-nav { background: transparent; padding: 12px 10px; }
+.ambraia-tpl-cat { height: 30px; border-radius: 7px; font-size: var(--font-ui-small); }
+.ambraia-tpl-cat.is-active { background: color-mix(in srgb, var(--interactive-accent) 10%, transparent); color: var(--interactive-accent); }
+.ambraia-tpl-cat.is-active .ambraia-tpl-cat-n { color: inherit; opacity: 0.7; }
+.ambraia-tpl-grid { background: var(--background-secondary); gap: 10px; padding: 14px 16px 20px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.ambraia-tpl-group { margin-top: 14px; }
+.ambraia-tpl-card { flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; border-color: var(--background-modifier-border); transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; min-height: 108px; }
+.ambraia-tpl-card:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07); }
+.ambraia-tpl-card-icon { width: 36px; height: 36px; font-size: 20px; border-radius: 10px; background: var(--background-secondary); }
+.ambraia-tpl-card-name { font-size: var(--font-ui-small); }
+.ambraia-tpl-preview { gap: 10px; padding: 18px 18px 16px; }
+.ambraia-tpl-prev-icon { border-radius: 12px; }
+.ambraia-tpl-sheet { display: flex; flex-direction: column; gap: 5px; padding: 14px 14px 16px; border-radius: 10px; border: 1px solid var(--background-modifier-border); background: var(--background-primary); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 18px rgba(0, 0, 0, 0.05); font-size: 11.5px; overflow: hidden; }
+.ambraia-tpl-sheet-title { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; color: var(--text-normal); margin-bottom: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ambraia-tpl-sheet-icon { font-size: 16px; }
+.ambraia-tpl-sheet-h { font-weight: 600; color: var(--text-normal); margin-top: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ambraia-tpl-sheet-lines { display: flex; flex-direction: column; gap: 4px; }
+.ambraia-tpl-sheet-line { height: 5px; border-radius: 3px; background: var(--background-modifier-border); width: 92%; }
+.ambraia-tpl-sheet-line:nth-child(2n) { width: 64%; }
+.ambraia-tpl-sheet-more { color: var(--text-faint); margin-top: 4px; }
+.ambraia-tpl-use { border-radius: 9px; }
+
+/* ---------- file explorer: hover / selection never covers the indentation guides */
+body.ambraia-minimal .nav-files-container .tree-item-children, body.ambraia-theme .nav-files-container .tree-item-children { position: relative; border-inline-start-color: transparent; }
+body.ambraia-minimal .nav-files-container .tree-item-children::before, body.ambraia-theme .nav-files-container .tree-item-children::before {
+	content: ''; position: absolute; z-index: 1; pointer-events: none; top: 0; bottom: 0;
+	inset-inline-start: calc(-1 * var(--nav-indentation-guide-width, 1px)); width: var(--nav-indentation-guide-width, 1px);
+	background: var(--nav-indentation-guide-color, var(--background-modifier-border));
+}
+body:not(.show-indentation-guide) .nav-files-container .tree-item-children::before { display: none; }
+
+/* ---------- minimal interface: quieter, Notion-like surfaces */
+body.ambraia-minimal .markdown-rendered, body.ambraia-minimal .markdown-source-view.mod-cm6 .cm-content { line-height: 1.6; }
+body.ambraia-minimal .inline-title { font-weight: 700; font-size: 2.2em; }
+body.ambraia-minimal .markdown-rendered h1, body.ambraia-minimal .HyperMD-header-1 { font-weight: 700; }
+body.ambraia-minimal .markdown-rendered h2, body.ambraia-minimal .HyperMD-header-2, body.ambraia-minimal .markdown-rendered h3, body.ambraia-minimal .HyperMD-header-3 { font-weight: 650; }
+body.ambraia-minimal .markdown-rendered blockquote { border-inline-start: 3px solid currentColor; padding: 2px 14px; color: var(--text-normal); }
+body.ambraia-minimal .markdown-rendered code, body.ambraia-minimal .cm-inline-code { border-radius: 4px; padding: 0.15em 0.35em; color: #eb5757; background: var(--obn-hover, rgba(135, 131, 120, 0.15)); }
+body.ambraia-minimal.theme-dark .markdown-rendered code, body.ambraia-minimal.theme-dark .cm-inline-code { color: #ff7369; }
+body.ambraia-minimal .markdown-rendered pre { border-radius: 6px; border: none; background: var(--obn-hover, var(--background-secondary)); }
+body.ambraia-minimal .markdown-rendered table { border-collapse: collapse; }
+body.ambraia-minimal .markdown-rendered th, body.ambraia-minimal .markdown-rendered td { border-color: var(--obn-line, var(--background-modifier-border)); }
+body.ambraia-minimal .markdown-rendered th { font-weight: 600; color: var(--text-muted); background: transparent; }
+body.ambraia-minimal .markdown-rendered hr, body.ambraia-minimal .hr { border-color: var(--obn-line, var(--background-modifier-border)); }
+body.ambraia-minimal .callout { border-radius: 6px; }
+body.ambraia-minimal input[type='checkbox'].task-list-item-checkbox { border-radius: 3px; }
+body.ambraia-minimal .status-bar { border: none; background: transparent; color: var(--text-faint); }
+body.ambraia-minimal .status-bar-item:hover { color: var(--text-muted); }
+body.ambraia-minimal .modal { border-radius: 12px; border: 1px solid var(--obn-line, var(--background-modifier-border)); box-shadow: var(--obn-float); }
+body.ambraia-minimal .vertical-tab-nav-item { border-radius: var(--obn-radius-s, 6px); }
+.ambraia-ai-google { margin: 6px 0 2px; font-size: var(--font-ui-smaller); color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.ambraia-ai-google-frame { width: 100%; height: 64px; border: 0; border-radius: var(--radius-m); background: transparent; color-scheme: normal; }

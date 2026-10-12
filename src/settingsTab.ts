@@ -144,7 +144,7 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 		for (const sec of list) {
 			const b = tabs.createEl('button', {
 				cls: 'ambraia-set-tab',
-				attr: { role: 'tab', id: `ambraia-tab-${sec.id}`, 'data-section': sec.id, 'aria-controls': 'ambraia-set-panel', title: sec.desc },
+				attr: { role: 'tab', id: `ambraia-tab-${sec.id}`, 'data-section': sec.id, 'aria-controls': 'ambraia-set-panel', 'aria-description': sec.desc },
 			});
 			setIcon(b.createSpan({ cls: 'ambraia-set-tab-icon' }), sec.icon);
 			b.createSpan({ cls: 'ambraia-set-tab-label', text: sec.name });
@@ -184,32 +184,49 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 
 	private placeGlider(instant = false) {
 		const g = this.glider;
-		const tab = this.tabsEl?.querySelector<HTMLElement>('.ambraia-set-tab.is-active');
-		if (!g || !tab) return;
+		const tabs = this.tabsEl;
+		const tab = tabs?.querySelector<HTMLElement>('.ambraia-set-tab.is-active');
+		if (!g || !tab || !tabs) return;
 		// not laid out yet (settings still opening): hidden until a real size is known
-		g.style.opacity = tab.offsetWidth ? '' : '0';
+		g.toggleClass('is-hidden', !tab.offsetWidth);
 		if (!tab.offsetWidth) return;
 		g.toggleClass('is-instant', instant || !g.style.width || g.style.width === '0px');
-		g.style.width = `${tab.offsetWidth}px`;
-		g.style.transform = `translateX(${tab.offsetLeft}px)`;
-		// the bar may scroll sideways on phones: keep the active tab in view
-		tab.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+		g.setCssStyles({ width: `${tab.offsetWidth}px`, transform: `translateX(${tab.offsetLeft}px)` });
+		// the bar may scroll sideways (narrow windows, phones): bring the active tab fully in view
+		const left = tab.offsetLeft - 24;
+		const right = tab.offsetLeft + tab.offsetWidth + 24 - tabs.clientWidth;
+		if (left < tabs.scrollLeft) tabs.scrollTo?.({ left: Math.max(0, left), behavior: instant ? 'auto' : 'smooth' });
+		else if (right > tabs.scrollLeft) tabs.scrollTo?.({ left: right, behavior: instant ? 'auto' : 'smooth' });
+		this.updateEdges();
+	}
+
+	/** Soft fades on the sides of the bar when more tabs are hidden in that direction. */
+	private updateEdges() {
+		const tabs = this.tabsEl;
+		const wrap = tabs?.parentElement;
+		if (!tabs || !wrap) return;
+		const max = tabs.scrollWidth - tabs.clientWidth;
+		wrap.toggleClass('can-scroll-start', tabs.scrollLeft > 2);
+		wrap.toggleClass('can-scroll-end', max > 2 && tabs.scrollLeft < max - 2);
 	}
 
 	/**
-	 * Press and slide across the bar: the glass drop follows the finger / pointer, stretching a little,
-	 * and settles on the tab where it is released.
+	 * Press and slide across the bar: the indicator follows the finger / pointer and settles on the
+	 * tab where it is released. Near the ends of the bar it scrolls by itself, so the tabs hidden
+	 * on that side come into view while dragging. The mouse wheel also scrolls the bar sideways.
 	 */
 	private dragTabs(tabs: HTMLElement) {
 		let start = -1;
 		let moved = false;
 		let pid = -1;
+		let lastX = 0;
+		let raf = 0;
 		const tabAt = (x: number) => {
 			let best: HTMLElement | null = null;
 			let dist = Infinity;
 			tabs.querySelectorAll<HTMLElement>('.ambraia-set-tab').forEach((b) => {
 				const r = b.getBoundingClientRect();
-				const d = Math.abs(r.left + r.width / 2 - x);
+				const d = x >= r.left && x <= r.right ? 0 : Math.min(Math.abs(r.left - x), Math.abs(r.right - x));
 				if (d < dist) {
 					dist = d;
 					best = b;
@@ -217,31 +234,68 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 			});
 			return best as HTMLElement | null;
 		};
+		const follow = () => {
+			const g = this.glider;
+			if (!g) return;
+			const box = tabs.getBoundingClientRect();
+			const w = g.offsetWidth;
+			const x = Math.max(4, Math.min(tabs.scrollWidth - w - 4, lastX - box.left + tabs.scrollLeft - w / 2));
+			g.setCssStyles({ transform: `translateX(${x}px)` });
+			const over = tabAt(lastX);
+			tabs.querySelectorAll<HTMLElement>('.ambraia-set-tab').forEach((b) => b.toggleClass('is-hover', b === over));
+		};
+		// auto-scroll while the pointer rests near one end of the bar
+		const edgeScroll = () => {
+			raf = 0;
+			if (start < 0 || !moved) return;
+			const box = tabs.getBoundingClientRect();
+			const zone = Math.min(56, box.width / 4);
+			let v = 0;
+			if (lastX < box.left + zone) v = -Math.ceil(((box.left + zone - lastX) / zone) * 14);
+			else if (lastX > box.right - zone) v = Math.ceil(((lastX - (box.right - zone)) / zone) * 14);
+			if (v) {
+				const before = tabs.scrollLeft;
+				tabs.scrollLeft += v;
+				if (tabs.scrollLeft !== before) follow();
+			}
+			raf = window.requestAnimationFrame(edgeScroll);
+		};
+		tabs.addEventListener('scroll', () => this.updateEdges(), { passive: true });
+		tabs.addEventListener(
+			'wheel',
+			(e: WheelEvent) => {
+				if (tabs.scrollWidth <= tabs.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+				e.preventDefault();
+				tabs.scrollLeft += e.deltaY;
+			},
+			{ passive: false },
+		);
 		tabs.addEventListener('pointerdown', (e: PointerEvent) => {
 			if (e.button !== 0 || !(e.target as HTMLElement).closest('.ambraia-set-tab')) return;
 			start = e.clientX;
+			lastX = e.clientX;
 			moved = false;
 			pid = e.pointerId;
 		});
 		tabs.addEventListener('pointermove', (e: PointerEvent) => {
 			const g = this.glider;
 			if (start < 0 || e.pointerId !== pid || !g) return;
+			lastX = e.clientX;
 			if (!moved && Math.abs(e.clientX - start) < 6) return;
 			if (!moved) {
 				moved = true;
 				tabs.setPointerCapture?.(pid);
 				tabs.addClass('is-dragging');
+				g.removeClass('is-instant');
 			}
-			const box = tabs.getBoundingClientRect();
-			const w = g.offsetWidth;
-			const x = Math.max(4, Math.min(tabs.scrollWidth - w - 4, e.clientX - box.left + tabs.scrollLeft - w / 2));
-			g.style.transform = `translateX(${x}px)`;
-			const over = tabAt(e.clientX);
-			tabs.querySelectorAll<HTMLElement>('.ambraia-set-tab').forEach((b) => b.toggleClass('is-hover', b === over));
+			follow();
+			if (!raf) raf = window.requestAnimationFrame(edgeScroll);
 		});
 		const end = (e: PointerEvent) => {
 			if (start < 0 || e.pointerId !== pid) return;
 			start = -1;
+			if (raf) window.cancelAnimationFrame(raf);
+			raf = 0;
 			if (!moved) return;
 			tabs.removeClass('is-dragging');
 			tabs.querySelectorAll('.is-hover').forEach((b) => b.removeClass('is-hover'));
@@ -295,26 +349,24 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 		window.requestAnimationFrame(() => this.placeGlider());
 	}
 
-	/** Credits: name and version on the left, links in the middle, the optional donation on the right. */
+	/** Credits: name and version on the left; GitHub, donation, legal notes and privacy on one row. */
 	private footer(parent: HTMLElement) {
 		const f = parent.createDiv('ambraia-set-footer');
-		const brand = f.createDiv('ambraia-set-footer-brand');
-		setIcon(brand.createSpan('ambraia-set-footer-logo'), 'gem');
-		const who = brand.createDiv('ambraia-set-footer-who');
+		const who = f.createDiv('ambraia-set-footer-who');
 		who.createDiv({ cls: 'ambraia-set-footer-name', text: `Ambraia ${this.plugin.manifest.version}` });
 		who.createDiv({ cls: 'ambraia-set-footer-by', text: tx('di {0} · licenza MIT', this.plugin.manifest.author || 'd4ruerk1') });
 		const links = f.createDiv('ambraia-set-footer-links');
-		const link = (icon: string, text: string, href: string) => {
-			const a = links.createEl('a', { cls: 'ambraia-set-footer-link', href, attr: { target: '_blank', rel: 'noopener' } });
-			setIcon(a.createSpan(), icon);
+		const link = (icon: string, text: string, href: string, cls = '') => {
+			const a = links.createEl('a', { cls: `ambraia-set-footer-link ${cls}`.trim(), href, attr: { target: '_blank', rel: 'noopener noreferrer' } });
+			setIcon(a.createSpan('ambraia-set-footer-link-icon'), icon);
 			a.createSpan({ text });
+			return a;
 		};
 		link('github', 'GitHub', REPO_URL);
-		link('shield-check', tx('Privacy'), REPO_URL + '#privacy');
-		link('scale', tx('Note legali'), REPO_URL + '/blob/main/THIRD_PARTY_NOTICES.md');
-		const donate = f.createEl('a', { cls: 'ambraia-donate', href: DONATE_URL, attr: { target: '_blank', rel: 'noopener', 'aria-label': tx('Facoltativo: Ambraia resta gratuito e completo.') } });
-		setIcon(donate.createSpan({ cls: 'ambraia-donate-icon' }), 'coffee');
-		donate.createSpan({ text: tx('Sostieni su Ko-fi') });
+		// optional: Ambraia stays free and complete, nothing is unlocked by donating
+		link('heart', tx('Donazione'), DONATE_URL, 'ambraia-donate').setAttr('aria-description', tx('Facoltativo: Ambraia resta gratuito e completo.'));
+		link('scale', tx('Note legali'), REPO_URL + '/blob/main/LEGAL.md');
+		link('shield-check', tx('Privacy'), REPO_URL + '/blob/main/PRIVACY.md');
 	}
 
 	// ------------------------------------------------------------------ Generale
@@ -343,7 +395,6 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 				['standard', tx('Standard')],
 				['serif', tx('Serif')],
 				['mono', tx('Mono')],
-				['obsidian', tx('Tema')],
 			],
 			this.s.font,
 			async (v) => {
@@ -374,38 +425,12 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 		this.toggle(pages, tx('Un’icona per ogni nota'), tx('Le note senza icona ne ricevono una scelta in base al nome. Puoi sempre cambiarla.'), 'autoIcons');
 		this.toggle(pages, tx('Note delle cartelle'), tx('Una cartella diventa una pagina: “Progetti/Progetti.md” si apre cliccando la cartella.'), 'folderNotes');
 		this.toggle(pages, tx('Nascondi le proprietà nelle note'), tx('Le proprietà restano nel file e si modificano dal pannello “Proprietà del file”. Le impostazioni di Obsidian non vengono cambiate.'), 'hideProperties');
+		this.toggle(pages, tx('Aggiorna i link in automatico'), tx('Quando rinomini o sposti una nota, i link che la richiamano vengono aggiornati subito, senza chiedere conferma.'), 'autoUpdateLinks', () => this.plugin.applyLinkUpdates());
 		this.toggle(pages, tx('Menu della nota essenziale'), tx('Il menu ⋯ in alto a destra mostra solo le azioni più usate (apri, rinomina, sposta, segnalibro, cerca, esporta in PDF, cronologia, elimina).'), 'compactNoteMenu');
 
 		this.explorerGroup(el);
 
 		this.ribbonGroup(el);
-
-		const adv = advanced(el);
-		this.toggle(adv, tx('Icone nell’esplora file'), '', 'explorerIcons');
-		new Setting(adv).setName(tx('Altezza della copertina')).addSlider((s) =>
-			s
-				.setLimits(120, 360, 10)
-				.setValue(this.s.bannerHeight)
-				.onChange(async (v) => {
-					this.s.bannerHeight = v;
-					await this.save(true);
-				}),
-		);
-		new Setting(adv)
-			.setName(tx('Proprietà di icona e copertina'))
-			.setDesc(tx('Nomi delle proprietà nel frontmatter (vengono letti anche “sticker” e “banner”).'))
-			.addText((t) =>
-				t.setValue(this.s.iconKey).onChange(async (v) => {
-					this.s.iconKey = v.trim() || 'icon';
-					await this.save(true);
-				}),
-			)
-			.addText((t) =>
-				t.setValue(this.s.bannerKey).onChange(async (v) => {
-					this.s.bannerKey = v.trim() || 'banner';
-					await this.save(true);
-				}),
-			);
 
 		new Setting(el)
 			.setName(tx('Ripristina le impostazioni predefinite'))
@@ -517,7 +542,7 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 			.addButton((b) =>
 				b.setButtonText(tx('Ripristina')).onClick(async () => {
 					this.s.navHidden = [];
-					this.s.navCustom = [{ id: 'today', icon: 'calendar-check', command: 'ambraia:daily-today', label: 'Nota di oggi' }];
+					this.s.navCustom = [];
 					await refresh();
 					this.redraw();
 				}),
@@ -598,6 +623,8 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 			tx('Le modifiche partono dopo circa un secondo e arrivano dagli altri dispositivi entro pochi secondi.'),
 			tx('Con la cifratura end-to-end il servizio cloud vede solo file illeggibili.'),
 			tx('Gli altri dispositivi si collegano con un codice di 8 caratteri e la tua approvazione.'),
+			tx('Il pallino indica lo stato: verde sincronizzato, arancione in pausa o bloccato, rosso da sistemare.'),
+			tx('La chiave principale non viene mai inviata e non si può recuperare: conservala in un gestore di password.'),
 		]);
 		if (sync.connected) st.addButton((b) => b.setButtonText(tx('Sincronizza ora')).onClick(() => void sync.syncNow()));
 		this.updateStatus();
@@ -607,16 +634,11 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 				.setDesc(tx('Con cifratura end-to-end. Se hai già Ambraia su un altro dispositivo basta un codice.'))
 				.addButton((b) => b.setButtonText(tx('Configura')).setCta().onClick(() => openSetup()));
 			const strip = start.descEl.createDiv('ambraia-brand-strip');
-			for (const p of PROVIDERS) brandBadge(strip, p.id, p.name, p.color).setAttr('title', p.name);
+			for (const p of PROVIDERS) brandBadge(strip, p.id, p.name, p.color);
 		}
 
 		if (sync.managers.length) {
 			const list = group(el, tx('Servizi cloud'));
-			groupHelp(list, tx('Servizi cloud'), [
-				tx('Puoi usare più servizi insieme: ogni modifica viene inviata a tutti.'),
-				tx('Il pallino indica lo stato: verde sincronizzato, arancione in pausa o bloccato, rosso da sistemare.'),
-				tx('L’interruttore mette in pausa solo questo servizio, su questo dispositivo.'),
-			]);
 			list.addClass('ambraia-target-list');
 			for (const m of sync.managers) this.renderTarget(list, m, (mode) => openSetup(m, mode));
 			const add = new Setting(list)
@@ -627,14 +649,7 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 
 		const keys = ['syncConfigSettings', 'syncConfigAppearance', 'syncConfigPlugins'] as const;
 		const g = group(el, tx('Cosa sincronizzare'));
-		const what = new Setting(g).setName(tx('Anche impostazioni, temi e plugin')).setDesc(tx('Note, allegati e cartelle sono sempre sincronizzati.'));
-		helpButton(what.nameEl, tx('Cosa viene sincronizzato'), [
-			tx('Sempre: tutte le note, gli allegati e le cartelle del vault.'),
-			tx('Impostazioni: scorciatoie, editor, aspetto e plugin core della cartella {0}.', this.app.vault.configDir),
-			tx('Plugin: elenco, codice e impostazioni dei plugin della community. I plugin solo-desktop restano spenti sui telefoni.'),
-			tx('Mai: layout delle finestre di ogni dispositivo (workspace), cache, cestino, e le credenziali (restano nell’archivio sicuro di ogni dispositivo).'),
-			tx('Quando arrivano impostazioni o plugin da un altro dispositivo, Ambraia chiede di ricaricare Obsidian.'),
-		]);
+		const what = new Setting(g).setName(tx('Anche impostazioni, temi e plugin')).setDesc(tx('Note, allegati e cartelle sono sempre sincronizzati. Layout delle finestre, cache e credenziali restano su ogni dispositivo.'));
 		what.addToggle((t) =>
 			t.setValue(keys.every((k) => this.s[k])).onChange(async (v) => {
 				for (const k of keys) this.s[k] = v;
@@ -696,7 +711,7 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 		const sync = this.plugin.sync;
 		const card = el.createDiv({ cls: 'ambraia-target' });
 		const meta = PROVIDERS.find((p) => p.id === m.provider);
-		card.style.setProperty('--ambraia-provider', meta?.color ?? 'var(--interactive-accent)');
+		card.setCssProps({ '--ambraia-provider': meta?.color ?? 'var(--interactive-accent)' });
 		const head = new Setting(card).setName(m.label);
 		head.settingEl.addClass('ambraia-target-head');
 		head.settingEl.prepend(brandBadge(createDiv(), m.provider, meta?.name ?? m.label, meta?.color ?? '', 'ambraia-target-mark'));
@@ -775,12 +790,6 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 		// ----- encryption
 		const enc = new Setting(card).setName(tx('Cifratura end-to-end'));
 		enc.settingEl.addClass('ambraia-target-row');
-		helpButton(enc.nameEl, tx('Cifratura end-to-end'), [
-			tx('Con la cifratura attiva i file (e, se vuoi, i loro nomi) vengono cifrati sul dispositivo: il servizio cloud non può leggerli.'),
-			tx('Scegli una chiave principale lunga o generala con il dado: va inserita una volta su ogni dispositivo.'),
-			tx('La chiave non viene mai inviata e non si può recuperare: conservala in un gestore di password.'),
-			tx('Con più servizi puoi usare la stessa chiave principale per tutti oppure una chiave dedicata per ciascuno.'),
-		]);
 		const modal = (mode: 'enable' | 'change' | 'recreate' | 'join') => new EncryptionModal(this.app, this.plugin, m, mode, () => this.redraw()).open();
 		if (!t.encrypt) {
 			enc.setDesc(tx('Disattivata: il servizio cloud può leggere i file.'));
@@ -810,7 +819,7 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 			const others = sync.managers.filter((x) => x !== m && x.t.encrypt);
 			if (others.length) {
 				const peers = sync.sharedPeers(m);
-				const km = new Setting(more)
+				new Setting(more)
 					.setName(tx('Chiave principale'))
 					.setDesc(t.sharedKey ? tx('Condivisa con {0}', peers.map((p) => p.label).join(', ') || '—') : tx('Dedicata a questo servizio'))
 					.addDropdown((d) =>
@@ -834,11 +843,6 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 								}
 							}),
 					);
-				helpButton(km.nameEl, tx('Chiave condivisa o dedicata'), [
-					tx('Chiave condivisa: la stessa chiave principale sblocca tutti i servizi con un solo inserimento, e cambiandola cambia ovunque.'),
-					tx('Chiave dedicata: il servizio ha una chiave sua. Utile per separare un cloud di cui ti fidi meno o che condividi con altri.'),
-					tx('In entrambi i casi ogni cartella nel cloud ha un proprio file della chiave: i dati di un servizio non permettono di leggere quelli degli altri senza la chiave.'),
-				]);
 			}
 			const encAdv = new Setting(more).setName(tx('Cifratura')).setDesc(tx('“Ricrea” serve solo se hai perso la chiave principale.'));
 			encAdv.addButton((b) =>
@@ -911,14 +915,8 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 	/** Devices linked to the same cloud folder: invitations, remote disconnect / erase. All devices are equal. */
 	private renderDevices(card: HTMLElement, m: SyncManager) {
 		const box = card.createDiv({ cls: 'ambraia-devices' });
-		const headRow = new Setting(box).setName(tx('Dispositivi'));
+		const headRow = new Setting(box).setName(tx('Dispositivi')).setDesc(tx('Tutti i dispositivi sono uguali: da ognuno puoi collegarne o toglierne altri.'));
 		headRow.settingEl.addClass('ambraia-target-row');
-		helpButton(headRow.nameEl, tx('Dispositivi collegati'), [
-			tx('Tutti i dispositivi collegati sono uguali: da ognuno puoi collegarne di nuovi e scegliere quali togliere dalla sincronizzazione, anche il primo.'),
-			tx('Per collegare un dispositivo: “Collega un dispositivo”, poi sull’altro scegli il servizio, accedi e inserisci il codice di 8 caratteri (vale 5 minuti). Infine approvi qui, controllando che il codice di verifica sia lo stesso.'),
-			tx('Ogni dispositivo è presentato da quello che lo ha approvato e ogni rimozione è firmata: un dispositivo rimosso non può rientrare senza un nuovo codice.'),
-			tx('L’elenco è cifrato end-to-end e salvato con nomi anonimi: il servizio cloud non vede nomi né numero dei dispositivi.'),
-		]);
 		headRow.addButton((b) => b.setButtonText(tx('Collega un dispositivo')).setCta().onClick(() => new PairModal(this.app, m).open()));
 		const inviteBtn = headRow.controlEl.querySelector('button');
 		const list = box.createDiv({ cls: 'ambraia-device-list' });
@@ -977,7 +975,7 @@ export class AmbraiaSettingTab extends PluginSettingTab {
 				setIcon(icon, /iphone|android(?! tablet)/i.test(e.info.platform) ? 'smartphone' : /ipad|tablet/i.test(e.info.platform) ? 'tablet' : 'monitor');
 				const txt = row.createDiv({ cls: 'ambraia-device-text' });
 				const nm = txt.createDiv({ cls: 'ambraia-device-name', text: e.info.name + (self ? ` (${tx('questo dispositivo')})` : '') });
-				if (!e.trusted && !self) nm.createSpan({ cls: 'ambraia-role-chip is-unverified', text: tx('Non verificato'), attr: { title: tx('Nessun dispositivo dell’elenco lo ha approvato (o usa una versione precedente). Se non lo riconosci, rimuovilo.') } });
+				if (!e.trusted && !self) nm.createSpan({ cls: 'ambraia-role-chip is-unverified', text: tx('Non verificato'), attr: { 'aria-description': tx('Nessun dispositivo dell’elenco lo ha approvato (o usa una versione precedente). Se non lo riconosci, rimuovilo.') } });
 				const meta = [e.info.platform, self ? tx('attivo ora') : ago(e.info.lastSeen)].filter(Boolean).join(' · ');
 				const pend = e.pending === 'wipe' ? tx('in attesa: scollega ed elimina i dati') : e.pending === 'disconnect' ? tx('in attesa: scollega') : '';
 				txt.createDiv({ cls: 'ambraia-device-meta' + (pend ? ' mod-warning' : ''), text: pend || meta });
@@ -1123,7 +1121,16 @@ export function renderAiSettings(el: HTMLElement, plugin: AmbraiaPlugin, redraw:
 	st.createSpan({ cls: 'ambraia-settings-dot' });
 	st.createSpan({ text: !s.aiEnabled ? tx('AI disattivata') : cur ? tx('Modello predefinito: {0}', modelLabel(cur)) : tx('Nessun modello configurato') });
 
-	toggle(main, tx('Attiva l’AI'), tx('Chat, domande sul vault, agente e azioni sul testo selezionato. Funziona anche con modelli locali (LM Studio, Ollama).'), 'aiEnabled', true);
+	new Setting(main)
+		.setName(tx('Attiva l’AI'))
+		.setDesc(tx('Chat, domande sul vault, agente e azioni sul testo selezionato. Funziona anche con modelli locali (LM Studio, Ollama).'))
+		.addToggle((t) =>
+			t.setValue(s.aiEnabled).onChange(async (v) => {
+				s.aiEnabled = v;
+				await save();
+				redraw();
+			}),
+		);
 	if (!s.aiEnabled) return;
 
 	new Setting(main)
@@ -1231,16 +1238,49 @@ export function renderAiSettings(el: HTMLElement, plugin: AmbraiaPlugin, redraw:
 			});
 			t.inputEl.rows = 3;
 		});
-	toggle(priv, tx('Leggi i link incollati'), tx('Pagine, PDF, video YouTube (trascrizione) e post di X vengono scaricati dal dispositivo e allegati.'), 'aiWebAccess');
+	toggle(priv, tx('Leggi i link incollati'), tx('Pagine, PDF e post di X (tramite oEmbed) vengono scaricati dal dispositivo e allegati. I video YouTube si leggono solo tramite le API ufficiali (vedi «Video YouTube»).'), 'aiWebAccess');
 	toggle(priv, tx('Segna i testi generati dall’AI'), tx('Aggiunge la proprietà “ai-generated” alle note create dall’AI e “ai-assisted” a quelle in cui inserisce o modifica testo, come richiesto dal Regolamento UE sull’IA (art. 50).'), 'aiMarkOutput');
+	const keyField = (parent: HTMLElement, name: string, desc: string, provider: string, url: string) => {
+		const st = new Setting(parent).setName(name).setDesc(desc);
+		st.addText((t) => {
+			t.inputEl.type = 'password';
+			t.inputEl.autocomplete = 'off';
+			t.setPlaceholder(ai.getKey(provider) ? tx('Chiave salvata nel portachiavi') : tx('Incolla la chiave'));
+			t.inputEl.addEventListener('change', () => {
+				const v = t.getValue().trim();
+				if (!v) return;
+				void ai.setKey(provider, v).then(() => {
+					t.setValue('');
+					t.setPlaceholder(tx('Chiave salvata nel portachiavi'));
+					new Notice(tx('Chiave salvata.'));
+				});
+			});
+		});
+		st.addExtraButton((b) => b.setIcon('external-link').setTooltip(tx('Ottieni una chiave')).onClick(() => window.open(url)));
+		if (ai.getKey(provider))
+			st.addExtraButton((b) =>
+				b
+					.setIcon('trash-2')
+					.setTooltip(tx('Rimuovi la chiave'))
+					.onClick(async () => {
+						await ai.setKey(provider, '');
+						redraw();
+					}),
+			);
+		st.settingEl.addClass('ambraia-sub-setting');
+		return st;
+	};
+	const hasGemini = !!ai.getKey('gemini');
 	segmented(
 		priv,
 		tx('Ricerca web per l’agente'),
-		tx('DuckDuckGo non richiede chiavi; SearXNG è un motore che puoi ospitare tu.'),
+		hasGemini
+			? tx('Automatica: Ricerca Google tramite la tua chiave Gemini (API ufficiale, piano gratuito). Se la quota finisce, usa le fonti gratuite.')
+			: tx('Automatica: fonti gratuite senza chiave (DuckDuckGo Instant Answers e Wikipedia, API ufficiali). Aggiungi una chiave Gemini gratuita per cercare con Google.'),
 		[
-			['off', tx('No')],
-			['duckduckgo', 'DuckDuckGo'],
+			['auto', tx('Automatica')],
 			['searxng', 'SearXNG'],
+			['off', tx('No')],
 		],
 		s.aiWebSearch,
 		async (v) => {
@@ -1262,6 +1302,22 @@ export function renderAiSettings(el: HTMLElement, plugin: AmbraiaPlugin, redraw:
 					}),
 			)
 			.settingEl.addClass('ambraia-sub-setting');
+	segmented(
+		priv,
+		tx('Video YouTube'),
+		tx('Automatico: con una chiave Gemini il video viene “guardato” da Google Gemini (trascrizione o riassunto); con una chiave YouTube Data API si leggono titolo, durata e descrizione; altrimenti solo il titolo. Puoi anche allegare sottotitoli .srt/.vtt.'),
+		[
+			['auto', tx('Automatico')],
+			['title', tx('Solo titolo')],
+		],
+		s.aiYoutube,
+		async (v) => {
+			s.aiYoutube = v;
+			await save();
+		},
+	);
+	keyField(priv, tx('Chiave Google Gemini'), tx('Gratuita su Google AI Studio. Serve per la Ricerca Google e i video YouTube (è la stessa chiave del fornitore Gemini). Sul piano gratuito Google può usare i contenuti inviati per migliorare i suoi servizi: vedi i termini di Gemini API.'), 'gemini', 'https://aistudio.google.com/apikey');
+	if (s.aiYoutube === 'auto') keyField(priv, tx('Chiave YouTube Data API (facoltativa)'), tx('Gratuita da Google Cloud Console (YouTube Data API v3): titolo, durata e descrizione dei video quando non c’è una chiave Gemini.'), 'youtube', 'https://console.cloud.google.com/apis/library/youtube.googleapis.com');
 
 	// semantic search
 	const sem = group(el, tx('Ricerca semantica'));
@@ -1369,7 +1425,7 @@ export function renderAiSettings(el: HTMLElement, plugin: AmbraiaPlugin, redraw:
 	folder(more, tx('Nota della memoria'), 'aiMemoryFile', 'Ambraia/Memoria.md');
 }
 
-/** “Calendario” tab. */
+/** “Condivisione” tab. */
 export function renderShareSettings(el: HTMLElement, plugin: AmbraiaPlugin, redraw: () => void) {
 	const s = plugin.settings;
 	const links = group(el, tx('Link condivisi'), tx('Chi riceve il link legge la nota in una pagina web, senza Obsidian e senza account. Il contenuto è cifrato: la chiave sta nella parte del link dopo “#”, che il browser non invia a nessun server.'));
@@ -1396,17 +1452,6 @@ export function renderShareSettings(el: HTMLElement, plugin: AmbraiaPlugin, redr
 				new OpenShareModal(plugin.app, plugin.shares).open();
 			}),
 		);
-	new Setting(links)
-		.setName(tx('Rispondi ai link condivisi'))
-		.setDesc(tx('Questo dispositivo, mentre Obsidian è aperto, consegna le note dei link e riceve le modifiche. Spegnilo su un dispositivo che non vuoi usare per questo.'))
-		.addToggle((t) =>
-			t.setValue(s.shareServe).onChange(async (v) => {
-				s.shareServe = v;
-				await plugin.saveSettings();
-				plugin.shares?.applyServe(true);
-			}),
-		);
-
 	const adv = advanced(el);
 	const url = (name: string, desc: string, key: 'shareViewerUrl' | 'shareRelayUrl') => {
 		const st = new Setting(adv).setName(name).setDesc(desc);
@@ -1446,7 +1491,7 @@ export function renderCalendarSettings(el: HTMLElement, plugin: AmbraiaPlugin, r
 		await plugin.saveSettings();
 		plugin.refreshCalendars();
 	};
-	const text = (parent: HTMLElement, name: string, desc: string, key: 'dailyFolder' | 'dailyFormat' | 'dailyTemplate' | 'weeklyFolder' | 'weeklyFormat' | 'weeklyTemplate' | 'calendarDateFields', ph: string) => {
+	const text = (parent: HTMLElement, name: string, desc: string, key: 'dailyFolder' | 'dailyFormat' | 'dailyTemplate' | 'weeklyFolder' | 'weeklyFormat' | 'weeklyTemplate', ph: string) => {
 		const st = new Setting(parent).setName(name).addText((t) =>
 			t
 				.setPlaceholder(ph)
@@ -1460,7 +1505,7 @@ export function renderCalendarSettings(el: HTMLElement, plugin: AmbraiaPlugin, r
 		st.settingEl.addClass('ambraia-sub-setting');
 		return st;
 	};
-	const toggle = (parent: HTMLElement, name: string, desc: string, key: 'calendarUseCoreDaily' | 'calendarWeekNumbers' | 'calendarShowTasks' | 'calendarClickCreates' | 'calendarOnStart' | 'weeklyNotes', again = false) =>
+	const toggle = (parent: HTMLElement, name: string, desc: string, key: 'calendarUseCoreDaily' | 'calendarShowTasks' | 'calendarClickCreates' | 'calendarOnStart' | 'weeklyNotes', again = false) =>
 		new Setting(parent)
 			.setName(name)
 			.setDesc(desc)
@@ -1505,7 +1550,6 @@ export function renderCalendarSettings(el: HTMLElement, plugin: AmbraiaPlugin, r
 		},
 	);
 	toggle(view, tx('Attività con scadenza'), tx('Le caselle “- [ ]” con 📅 2026-10-02, ⏳ o due:: compaiono nel giorno indicato.'), 'calendarShowTasks');
-	toggle(view, tx('Numeri delle settimane'), '', 'calendarWeekNumbers');
 	toggle(view, tx('Note della settimana'), tx('Mostra i numeri delle settimane: un clic apre o crea la nota settimanale.'), 'weeklyNotes', true);
 	if (s.weeklyNotes) {
 		text(view, tx('Cartella'), '', 'weeklyFolder', tx('Settimane'));
@@ -1513,7 +1557,4 @@ export function renderCalendarSettings(el: HTMLElement, plugin: AmbraiaPlugin, r
 		text(view, tx('Modello'), '', 'weeklyTemplate', 'Modelli/Settimana');
 	}
 	toggle(view, tx('Apri il calendario all’avvio'), '', 'calendarOnStart');
-
-	const adv = advanced(el);
-	text(adv, tx('Proprietà data delle pagine'), tx('Le note con una di queste proprietà compaiono nel calendario (separate da virgola).'), 'calendarDateFields', 'data, date, scadenza, due').settingEl.removeClass('ambraia-sub-setting');
 }

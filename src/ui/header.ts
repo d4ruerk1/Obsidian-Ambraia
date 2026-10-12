@@ -112,11 +112,11 @@ export class PageHeaders {
 		h.toggleClass('has-icon', !!d.icon);
 		if (bg) {
 			const b = h.createDiv('ambraia-banner');
-			b.style.height = `${this.plugin.settings.bannerHeight}px`;
-			if (bg.kind === 'css') b.style.background = bg.value;
+			b.setCssStyles({ height: `${this.plugin.settings.bannerHeight}px` });
+			if (bg.kind === 'css') b.setCssStyles({ background: bg.value });
 			else {
 				const img = b.createEl('img', { attr: { src: bg.src, alt: '', draggable: 'false' } });
-				img.style.objectPosition = `center ${d.bannerY}%`;
+				img.setCssStyles({ objectPosition: `center ${d.bannerY}%` });
 				img.onerror = () => {
 					b.addClass('is-broken');
 					b.dataset.msg = tx('Immagine di copertina non trovata');
@@ -232,7 +232,7 @@ export class PageHeaders {
 			const ratio = img.naturalHeight && img.naturalWidth ? img.naturalHeight / img.naturalWidth : 0.6;
 			const extra = Math.max(20, b.clientWidth * ratio - b.clientHeight);
 			y = Math.min(100, Math.max(0, y - (dy / extra) * 100));
-			img.style.objectPosition = `center ${y}%`;
+			img.setCssStyles({ objectPosition: `center ${y}%` });
 		};
 		const up = () => (dragging = false);
 		b.addEventListener('pointerdown', down);

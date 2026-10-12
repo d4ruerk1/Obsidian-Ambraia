@@ -74,7 +74,7 @@ export async function passwordKey(password: string, salt: Uint8Array, log2m: num
 	return argon2idAsync(te.encode(password.normalize('NFC')), salt, { m: 2 ** log2m, t, p: 1, dkLen: 32, asyncTick: 20 });
 }
 
-export type ShareFailure = 'corrupt' | 'password' | 'expired' | 'revoked' | 'exhausted' | 'gone' | 'locked' | 'too-large' | 'offline' | 'unsupported' | 'readonly' | 'session' | 'conflict';
+export type ShareFailure = 'corrupt' | 'password' | 'expired' | 'notyet' | 'revoked' | 'exhausted' | 'gone' | 'locked' | 'too-large' | 'offline' | 'unsupported' | 'readonly' | 'session' | 'conflict';
 
 export class ShareError extends Error {
 	constructor(public code: ShareFailure) {
@@ -271,7 +271,7 @@ export function openResponse(keys: LiveKeys, k1: Uint8Array, nonce: Uint8Array, 
 	}
 	if (b[0] === 2) throw new ConflictError(typeof o.m === 'string' ? o.m : '');
 	if (!ok) {
-		const known: ShareFailure[] = ['password', 'expired', 'revoked', 'exhausted', 'gone', 'locked', 'too-large', 'readonly', 'session', 'conflict'];
+		const known: ShareFailure[] = ['password', 'expired', 'notyet', 'revoked', 'exhausted', 'gone', 'locked', 'too-large', 'readonly', 'session', 'conflict'];
 		throw new ShareError(known.includes(o.err as ShareFailure) ? (o.err as ShareFailure) : 'corrupt');
 	}
 	if (typeof o.m !== 'string') throw new ShareError('corrupt');

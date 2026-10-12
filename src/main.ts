@@ -48,8 +48,8 @@ import { ensureFolderFor, PROJECT_SAMPLE } from './ai/local';
 import { Maintenance } from './maintenance';
 import { compactNoteMenu, orderEditorMenu } from './ui/noteMenu';
 import { isRtl, setLanguage, tx } from './i18n';
+import { afterUnload } from './lifecycle';
 import { RibbonTools } from './ui/ribbon';
-import { watchRemoval } from './lifecycle';
 import { PROVIDER_IDS, ProviderId } from './sync/providers';
 import { Alg, ALGS } from './sync/crypto';
 import { SharingFeature } from './share/feature';
@@ -175,10 +175,16 @@ export default class AmbraiaPlugin extends Plugin {
 	lastMarkdownView: MarkdownView | null = null;
 	maintenance!: Maintenance;
 	private aiRibbon: HTMLElement | null = null;
+	private calendarRibbon: HTMLElement | null = null;
 	ribbon!: RibbonTools;
 	shares!: SharingFeature;
 
+	/** manifest.json was on disk when Ambraia started (see lifecycle.ts). */
+	installedOnDisk = false;
+
 	async onload() {
+		const dir = this.manifest.dir;
+		this.installedOnDisk = !!dir && (await this.app.vault.adapter.exists(`${dir}/manifest.json`).catch(() => false));
 		await migrateState(this.app, this.manifest.dir);
 		await this.loadSettings();
 		setLanguage(this.settings.language);
@@ -201,9 +207,10 @@ export default class AmbraiaPlugin extends Plugin {
 		this.registerView(AI_CHAT_VIEW, (leaf) => new AiChatView(leaf, this));
 		this.registerView(CALENDAR_VIEW, (leaf) => new CalendarView(leaf, this));
 		// calendar first, the AI right after it (only shown while the AI is on), then the user's shortcuts
-		this.addRibbonIcon('calendar-days', tx('Ambraia: calendario'), () => this.activateCalendar());
+		const calRibbon = this.addRibbonIcon('calendar-days', tx('Ambraia: calendario'), () => this.activateCalendar());
 		this.aiRibbon = this.addRibbonIcon('sparkles', tx('Ambraia AI'), () => this.activateAiChat());
 		this.aiRibbon.toggleClass('ambraia-hidden', !this.settings.aiEnabled);
+		this.calendarRibbon = calRibbon;
 		this.ribbon = new RibbonTools(this);
 		this.ribbon.load();
 		this.registerEvent(
@@ -268,7 +275,8 @@ export default class AmbraiaPlugin extends Plugin {
 			await this.sync.init(statusEl);
 			await this.shares.load();
 			this.maintenance.schedule();
-			watchRemoval(this);
+			this.applyLinkUpdates();
+			this.placeAiRibbon();
 			// the separate navigator of 1.x is now part of the file explorer: close its old panel
 			this.app.workspace.detachLeavesOfType('ambraia-navigator');
 			// a chat panel restored from the saved layout while the AI is off would leave its icon in the sidebar
@@ -284,39 +292,40 @@ export default class AmbraiaPlugin extends Plugin {
 	 * device data (state folder, AI index, settings copy, keychain entries). Notes are never touched.
 	 * Returns problems worth telling the user (empty when everything went fine).
 	 */
-	async beforeUninstall(wipe: boolean): Promise<string[]> {
-		const problems: string[] = [];
-		try {
-			if (this.sync?.connected) await this.sync.syncNow();
-		} catch {
-			problems.push(tx('Ultime modifiche non inviate (offline): le note su questo dispositivo sono comunque complete.'));
-		}
-		// this device disappears from the list shown on the other devices
+	/**
+	 * Removes what Ambraia keeps on this device outside the notes, after Obsidian has uninstalled it
+	 * (see lifecycle.ts): this device leaves the device list, keychain entries and local-storage keys
+	 * are deleted, Obsidian's link setting gets back its previous value and any state file written
+	 * while the folder was being deleted is removed. Notes are never touched.
+	 */
+	async removeDeviceData(dir: string): Promise<void> {
 		for (const m of this.sync?.managers ?? []) await m.leaveRegistry().catch(() => undefined);
-		// explorer toolbar and theme classes are restored right away
-		this.navButtons?.unload();
-		document.body.removeClasses(this.bodyClasses());
-		if (wipe) {
+		const app = this.app as unknown as { loadLocalStorage?(k: string): unknown; saveLocalStorage?(k: string, v: unknown): void };
+		try {
+			const vault = this.app.vault as unknown as { getConfig?: (k: string) => unknown; setConfig?: (k: string, v: unknown) => void };
+			if (app.loadLocalStorage?.('ambraia-link-updates') === 'set' && vault.getConfig?.('alwaysUpdateLinks') === true) vault.setConfig?.('alwaysUpdateLinks', false);
+		} catch {
+			/* setting not available */
+		}
+		try {
+			const ss = this.app.secretStorage;
+			for (const id of ss.listSecrets()) if (id.startsWith('ambraia-')) ss.setSecret(id, '');
+		} catch {
+			/* keychain not available */
+		}
+		for (const k of ['ambraia-device-id', 'ambraia-device-name', 'ambraia-calendar-tips', 'ambraia-maintenance-at', 'ambraia-recent-templates', 'ambraia-link-updates'])
 			try {
-				const a = this.app.vault.adapter;
-				if (await a.exists(this.stateDir)) await a.rmdir(this.stateDir, true);
-				if (await a.exists(legacyDir(this.app))) await a.rmdir(legacyDir(this.app), true);
-			} catch {
-				problems.push(tx('Alcuni file tecnici in {0} non sono stati eliminati: puoi cancellarli a mano.', this.stateDir));
-			}
-			try {
-				const ss = this.app.secretStorage;
-				for (const id of ss.listSecrets()) if (id.startsWith('ambraia-')) ss.setSecret(id, '');
-			} catch {
-				/* keychain not available */
-			}
-			try {
-				for (const k of ['ambraia-device-id', 'ambraia-device-name', 'ambraia-calendar-tips', 'ambraia-maintenance-at', 'ambraia-recent-templates']) this.app.saveLocalStorage(k, null);
+				app.saveLocalStorage?.(k, null);
 			} catch {
 				/* ignore */
 			}
-		}
-		return problems;
+		const a = this.app.vault.adapter;
+		for (const d of [dir, legacyDir(this.app)])
+			try {
+				if (await a.exists(d)) await a.rmdir(d, true);
+			} catch {
+				/* already gone */
+			}
 	}
 
 	onunload() {
@@ -328,8 +337,9 @@ export default class AmbraiaPlugin extends Plugin {
 		this.imageTools?.unload();
 		this.ribbon?.unload();
 		this.ai?.unload();
-		document.body.removeClasses(this.bodyClasses());
-		void this.sync?.unload();
+		document.body.removeClasses([...this.bodyClasses(), 'ambraia-hide-native-sync']);
+		// stops the sync; if Obsidian is uninstalling Ambraia, its device data is then removed
+		void afterUnload(this);
 	}
 
 	// ------------------------------------------------------------------ settings
@@ -379,14 +389,22 @@ export default class AmbraiaPlugin extends Plugin {
 		delete (this.settings as { credentialsFallback?: string }).credentialsFallback;
 		if (this.settings.syncKdf !== 'pbkdf2') this.settings.syncKdf = 'argon2id';
 		// a font option of 1.x/2.x is now "Standard" (system fonts only)
-		if (!['standard', 'obsidian', 'serif', 'mono'].includes(this.settings.font)) this.settings.font = 'standard';
+		if (!['standard', 'serif', 'mono'].includes(this.settings.font)) this.settings.font = 'standard';
 		delete (this.settings as unknown as Record<string, unknown>).showProperties;
+		// 1.0.1: the default "Today's note" button of the file explorer is gone
+		if (Array.isArray(this.settings.navCustom)) this.settings.navCustom = this.settings.navCustom.filter((c) => !(c.id === 'today' && c.command === 'ambraia:daily-today'));
+		else this.settings.navCustom = [];
 		if (this.migrateSyncTargets(data)) migrated = true;
 		if (persist && (restored || migrated || (data as Record<string, unknown>).aiKeysFallback || legacyCreds)) await this.saveSettings();
 		if (persist) await dropBackup(this.app);
 		this.settings.aiEmbedding = data.aiEmbedding && typeof data.aiEmbedding.model === 'string' ? { ...data.aiEmbedding } : null;
 		if (!['chat', 'vault', 'agent'].includes(this.settings.aiDefaultMode)) this.settings.aiDefaultMode = 'chat';
 		if (!['ask', 'auto', 'never'].includes(this.settings.aiWrites)) this.settings.aiWrites = 'ask';
+		// 1.0.1: DuckDuckGo's result page is no longer read → official APIs ("auto"); a search turned
+		// off on purpose (AI already on) stays off
+		const ws = (data as { aiWebSearch?: string }).aiWebSearch;
+		if (ws === 'duckduckgo' || (ws === 'off' && !this.settings.aiEnabled) || (ws !== 'off' && ws !== 'searxng' && ws !== 'auto')) this.settings.aiWebSearch = 'auto';
+		if (this.settings.aiYoutube !== 'title') this.settings.aiYoutube = 'auto';
 	}
 
 	/** Up to 1.4 a vault had a single cloud service in flat settings: it becomes the service "main". */
@@ -551,7 +569,7 @@ export default class AmbraiaPlugin extends Plugin {
 		const b = document.body;
 		b.removeClasses(this.bodyClasses());
 		if (s.notionTheme) b.addClass('ambraia-theme');
-		if (s.font !== 'obsidian') b.addClass(`ambraia-font-${s.font}`);
+		b.addClass(`ambraia-font-${s.font}`);
 		if (s.contentWidth !== 'normal') b.addClass(`ambraia-width-${s.contentWidth}`);
 		if (s.minimalUI) b.addClass('ambraia-minimal');
 		if (s.folderNotes) b.addClass('ambraia-folder-notes');
@@ -561,7 +579,7 @@ export default class AmbraiaPlugin extends Plugin {
 		if (s.linkIcons) b.addClass('ambraia-link-icons');
 		this.sync?.renderStatus();
 		if (isRtl()) b.addClass('ambraia-rtl');
-		b.style.setProperty('--ambraia-banner-height', `${s.bannerHeight}px`);
+		b.setCssProps({ '--ambraia-banner-height': `${s.bannerHeight}px` });
 	}
 
 	/** Re-render icons/headers everywhere (after an icon or setting changes). */
@@ -676,6 +694,48 @@ export default class AmbraiaPlugin extends Plugin {
 		for (const l of this.app.workspace.getLeavesOfType(CALENDAR_VIEW)) if (l.view instanceof CalendarView) l.view.schedule(0);
 	}
 
+	/** The AI icon always sits right under the calendar icon (also after the user reordered the ribbon). */
+	placeAiRibbon() {
+		const ai = this.aiRibbon;
+		const cal = this.calendarRibbon;
+		if (!ai || !cal || !cal.parentElement) return;
+		if (cal.nextElementSibling !== ai) cal.after(ai);
+		// keep Obsidian's own ribbon order in sync, so the position survives a reorder/save
+		const ribbon = (this.app.workspace as unknown as { leftRibbon?: { items?: { buttonEl?: HTMLElement }[] } }).leftRibbon;
+		const items = ribbon?.items;
+		if (!Array.isArray(items)) return;
+		const ia = items.findIndex((i) => i.buttonEl === ai);
+		const ic = items.findIndex((i) => i.buttonEl === cal);
+		if (ia < 0 || ic < 0 || ia === ic + 1) return;
+		const [item] = items.splice(ia, 1);
+		items.splice(items.findIndex((i) => i.buttonEl === cal) + 1, 0, item);
+	}
+
+	/**
+	 * "Update internal links automatically": Obsidian's own option (Files and links), turned on while
+	 * Ambraia's toggle is on. Turning the toggle off gives Obsidian back the value it had, only when
+	 * Ambraia was the one that changed it.
+	 */
+	applyLinkUpdates() {
+		const vault = this.app.vault as unknown as { getConfig?: (k: string) => unknown; setConfig?: (k: string, v: unknown) => void };
+		const ls = this.app as unknown as { loadLocalStorage?(k: string): unknown; saveLocalStorage?(k: string, v: unknown): void };
+		const KEY = 'ambraia-link-updates';
+		try {
+			const cur = vault.getConfig?.('alwaysUpdateLinks') === true;
+			if (this.settings.autoUpdateLinks) {
+				if (!cur) {
+					vault.setConfig?.('alwaysUpdateLinks', true);
+					ls.saveLocalStorage?.(KEY, 'set');
+				}
+			} else if (ls.loadLocalStorage?.(KEY) === 'set') {
+				if (cur) vault.setConfig?.('alwaysUpdateLinks', false);
+				ls.saveLocalStorage?.(KEY, null);
+			}
+		} catch {
+			/* private API missing: nothing to do */
+		}
+	}
+
 	/** Redraws chat views after models/settings change. */
 	refreshAiViews() {
 		// AI off: no chat panel (and no sidebar tab icon) left behind
@@ -685,6 +745,7 @@ export default class AmbraiaPlugin extends Plugin {
 			return;
 		}
 		this.aiRibbon?.toggleClass('ambraia-hidden', false);
+		this.placeAiRibbon();
 		for (const l of this.app.workspace.getLeavesOfType(AI_CHAT_VIEW)) if (l.view instanceof AiChatView) l.view.refresh();
 	}
 

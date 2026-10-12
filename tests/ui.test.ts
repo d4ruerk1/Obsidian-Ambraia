@@ -53,6 +53,41 @@ function renderBlock(app: FakeApp, plugin: any, src: string, path = 'Progetti/Pr
 }
 
 describe('plugin lifecycle', () => {
+	it('cleans up after Obsidian\'s own Uninstall (folder deleted), not after turning off or updating', async () => {
+		const { afterUnload } = await import('../src/lifecycle');
+		const noWait = async () => {};
+		const prep = async () => {
+			const app = new FakeApp();
+			await app.vault.adapter.write(`${manifest.dir}/manifest.json`, '{}');
+			const plugin = new AmbraiaPlugin(app, manifest);
+			await plugin.onload();
+			await app.workspace.fireLayoutReady();
+			app.secretStorage.setSecret('ambraia-ai-openai', 'sk-x');
+			app.secretStorage.setSecret('other-plugin', 'keep');
+			app.saveLocalStorage('ambraia-device-name', 'PC');
+			return { app, plugin };
+		};
+		// turned off (or updated): the manifest stays → nothing is deleted
+		const off = await prep();
+		expect(off.plugin.installedOnDisk).toBe(true);
+		expect(await afterUnload(off.plugin, noWait)).toBe(false);
+		expect(off.app.secrets.get('ambraia-ai-openai')).toBe('sk-x');
+		expect(off.app.local.get('ambraia-device-name')).toBe('PC');
+		// uninstalled: Obsidian deleted the folder → keychain entries and local keys go, others stay
+		const un = await prep();
+		await un.app.vault.adapter.rmdir(manifest.dir);
+		await un.app.vault.adapter.write(`${manifest.dir}/state/sync-state.json`, '{}'); // written while deleting
+		expect(await afterUnload(un.plugin, noWait)).toBe(true);
+		expect(un.app.secrets.get('ambraia-ai-openai')).toBe('');
+		expect(un.app.secrets.get('other-plugin')).toBe('keep');
+		expect(un.app.local.has('ambraia-device-name')).toBe(false);
+		expect(await un.app.vault.adapter.exists(`${manifest.dir}/state/sync-state.json`)).toBe(false);
+		expect(un.app.vault.getAbstractFileByPath('Progetti/Sito.md')).toBeNull(); // (no notes in this vault)
+		// never installed on disk (e.g. loaded by tests or a dev build): never cleans
+		const { plugin } = await setup();
+		expect(await afterUnload(plugin, noWait)).toBe(false);
+	});
+
 	it('shares a note with a link from the note menu and opens it again', async () => {
 		const { app, plugin } = await setup(true);
 		const { Menu } = (await import('obsidian')) as any;
@@ -158,7 +193,7 @@ describe('plugin lifecycle', () => {
 		// few settings per page: the rest is under "Avanzate"
 		for (const id of ['general', 'editor', 'sync', 'ai', 'calendar']) {
 			const visible = [...showSettingsPage(tab, id).querySelectorAll('.setting-item')].filter((e: any) => !e.closest('details')).length;
-			expect(visible, id).toBeLessThanOrEqual(14);
+			expect(visible, id).toBeLessThanOrEqual(id === 'ai' ? 18 : 14);
 		}
 	});
 });
@@ -188,7 +223,7 @@ function fakeExplorer(app: FakeApp) {
 }
 
 describe('file explorer (no separate navigator)', () => {
-	it('shows page icons, hides folder notes, adds "+" on folders and a today button', async () => {
+	it('shows page icons, hides folder notes, adds "+" on folders and no default today button', async () => {
 		const { app, plugin } = await setup();
 		const view = fakeExplorer(app);
 		plugin.explorer.decorate();
@@ -197,7 +232,8 @@ describe('file explorer (no separate navigator)', () => {
 		expect(icon('Diario.md')).toBe('📔');
 		expect(view.fileItems['Progetti/Progetti.md'].selfEl.parentElement.classList.contains('ambraia-folder-note-hidden')).toBe(true);
 		expect(view.fileItems['Progetti'].selfEl.querySelector('.ambraia-ex-add')).not.toBeNull();
-		expect(view.containerEl.querySelector('.ambraia-nav-custom[data-ambraia-custom="today"]')).not.toBeNull();
+		// 1.0.1: no "Today's note" button by default
+		expect(view.containerEl.querySelector('.ambraia-nav-custom[data-ambraia-custom="today"]')).toBeNull();
 		// the "+" creates a page inside the folder
 		(view.fileItems['Progetti'].selfEl.querySelector('.ambraia-ex-add') as HTMLElement).click();
 		await sleep(20);

@@ -9,7 +9,7 @@ import { isDesktopFs, suggestFolders } from './providers/localFolder';
 import { defaultFolder, deviceSignKeys, EncryptionChoice, obsidianHttp, SyncManager } from './manager';
 import { Alg, ALGS, ALG_NAMES, generateMasterKey, Keyfile, MIN_STRENGTH, normalizePairCode, strength, WrongKeyError } from './crypto';
 import { brandBadge } from '../ui/brands';
-import { deviceId, deviceName, PAIR_FOLDER, PairingOffer, platformName, redeemCode } from './devices';
+import { deviceId, deviceName, isControlPath, PAIR_FOLDER, pairFolder, PairingOffer, platformName, redeemCode } from './devices';
 import { cleanPath } from './http';
 import { helpButton, link } from './help';
 import { tx } from '../i18n';
@@ -237,7 +237,7 @@ export class SetupModal extends Modal {
 		for (const p of PROVIDERS) {
 			const off = p.flow === 'folder' && !desktop;
 			const c = grid.createDiv({ cls: 'ambraia-provider' + (off ? ' is-disabled' : '') });
-			c.style.setProperty('--ambraia-provider', p.color);
+			c.setCssProps({ '--ambraia-provider': p.color });
 			brandBadge(c, p.id, p.name, p.color, 'ambraia-provider-mark');
 			c.createDiv({ cls: 'ambraia-provider-name', text: p.name });
 			c.createDiv({ cls: 'ambraia-provider-desc', text: p.flow === 'folder' ? (off ? tx('Solo su computer') : tx('Tramite app desktop')) : tx('Accesso diretto') });
@@ -274,6 +274,32 @@ export class SetupModal extends Modal {
 			const raw = inp.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 8);
 			inp.value = raw.length > 4 ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw;
 		});
+		// the code is looked up inside the vault folder: the folder the other devices use is picked by itself
+		let folders: string[] = [];
+		const fs = new Setting(el)
+			.setName(tx('Cartella del vault nel cloud'))
+			.setDesc(tx('La stessa cartella usata sull’altro dispositivo. Di solito è già selezionata.'))
+			.addText((t) => t.setPlaceholder(defaultFolder(this.app.vault.getName())).setValue(this.folder).onChange((v) => (this.folder = v)));
+		fs.settingEl.addClass('ambraia-wide', 'ambraia-pair-folder');
+		const folderInput = fs.controlEl.querySelector('input');
+		const chips = el.createDiv({ cls: 'ambraia-folder-chips' });
+		void this.folderSuggestions().then(({ list, chain }) => {
+			folders = list;
+			const pick = [...chain.keys()].find((f) => list.includes(f)) ?? (list.length === 1 ? list[0] : undefined);
+			if (pick && cleanPath(this.folder) === defaultFolder(this.app.vault.getName())) {
+				this.folder = pick;
+				if (folderInput) folderInput.value = pick;
+			}
+			for (const f of list) {
+				const c = chips.createEl('button', { cls: 'ambraia-folder-chip', text: f, attr: { 'data-folder': f } });
+				c.toggleClass('is-active', f === cleanPath(this.folder));
+				c.onclick = () => {
+					this.folder = f;
+					if (folderInput) folderInput.value = f;
+					chips.querySelectorAll('.ambraia-folder-chip').forEach((x) => x.toggleClass('is-active', x === c));
+				};
+			}
+		});
 		const status = el.createDiv({ cls: 'ambraia-setup-status' });
 		const btn = this.buttons(el, 'connect', tx('Collega'), async () => {
 			const code = normalizePairCode(inp.value);
@@ -285,7 +311,14 @@ export class SetupModal extends Modal {
 			try {
 				if (this.creds?.provider === 'mega' || this.creds?.provider === 'proton') this.mgr.setLocalBase(this.localBase);
 				const spub = (await deviceSignKeys(this.app)).pub;
-				const claim = await redeemCode(this.mgr.controlRemote(PAIR_FOLDER, this.creds), code, { id: deviceId(this.app), name: deviceName(this.app), platform: platformName(), spub });
+				const me = { id: deviceId(this.app), name: deviceName(this.app), platform: platformName(), spub };
+				// chosen folder first, then the other vault folders of the account, then the place used by 1.0.0
+				const places = [...new Set([pairFolder(cleanPath(this.folder)), ...folders.filter((f) => !isControlPath(f)).map((f) => pairFolder(f)), PAIR_FOLDER])];
+				let claim: Awaited<ReturnType<typeof redeemCode>> = null;
+				for (const place of places) {
+					claim = await redeemCode(this.mgr.controlRemote(place, this.creds), code, me).catch((e) => (place === places[0] ? Promise.reject(e) : null));
+					if (claim) break;
+				}
 				if (claim === 'outdated') {
 					status.setText(tx('L’altro dispositivo usa una versione precedente di Ambraia: aggiornala e genera un nuovo codice.'));
 					return;
@@ -458,7 +491,7 @@ export class SetupModal extends Modal {
 		const login = el.createEl('button', { cls: 'mod-cta ambraia-login-btn', text: tx('Accedi con {0}', meta.name) });
 		this.loginEl = login;
 		const box = el.createDiv({ cls: 'ambraia-auth-box' });
-		login.style.setProperty('--ambraia-provider', meta.color);
+		login.setCssProps({ '--ambraia-provider': meta.color });
 		login.onclick = async () => {
 			if (login.disabled) return;
 			const keys = own ? { clientId: this.clientId, clientSecret: this.clientSecret || undefined } : builtin;
@@ -645,20 +678,12 @@ export class SetupModal extends Modal {
 		let input: HTMLInputElement | null = null;
 		const s = new Setting(el)
 			.setName(tx('Cartella dell’app {0}', name))
-			.setDesc(tx('La cartella del computer che l’app desktop mantiene sincronizzata.'))
+			.setDesc(tx('Incolla il percorso della cartella che l’app desktop mantiene sincronizzata, oppure tocca uno dei suggerimenti qui sotto.'))
 			.addText((t) => {
 				input = t.inputEl;
 				t.setValue(this.localBase).onChange((v) => (this.localBase = v.trim()));
 			});
 		s.settingEl.addClass('ambraia-wide');
-		s.addButton((b) =>
-			b.setButtonText(tx('Sfoglia…')).onClick(async () => {
-				const p = await pickDirectory();
-				if (p && input) {
-					input.value = this.localBase = p;
-				}
-			}),
-		);
 		const sugg = el.createDiv({ cls: 'ambraia-suggest-row' });
 		void suggestFolders(this.provider === 'mega' ? 'mega' : 'proton').then((list) => {
 			for (const p of list) {
@@ -755,7 +780,7 @@ export class SetupModal extends Modal {
 		try {
 			if (this.creds && this.mgr.credentials !== this.creds) await this.mgr.saveCredentials(this.creds);
 			const [own, chain] = await Promise.all([this.mgr.vaultFolders(), this.mgr.chainFolders(this.provider)]);
-			const list = [...new Set([...chain.keys(), ...own].map((f) => cleanPath(f)).filter(Boolean))].sort();
+			const list = [...new Set([...chain.keys(), ...own].map((f) => cleanPath(f)).filter((f) => !!f && !isControlPath(f)))].sort();
 			return { list, chain };
 		} catch {
 			return { list: [], chain: new Map() };
@@ -947,19 +972,6 @@ export class SetupModal extends Modal {
 function loopbackPage(ok: boolean) {
 	const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 	return `<!doctype html><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Ambraia</title><body style="font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:90vh;margin:0;color:#37352f"><div style="text-align:center;max-width:28rem"><h2 style="font-weight:600">${esc(ok ? tx('Collegato ad Ambraia') : tx('Accesso annullato'))}</h2><p style="color:#787774">${esc(tx('Puoi chiudere questa scheda e tornare su Obsidian.'))}</p></div></body>`;
-}
-
-/** Native folder picker (desktop). */
-async function pickDirectory(): Promise<string | null> {
-	try {
-		const electron = (window as unknown as { require: (m: string) => { remote?: { dialog: { showOpenDialog(o: object): Promise<{ canceled: boolean; filePaths: string[] }> } } } }).require('electron');
-		const dialog = electron.remote?.dialog;
-		if (!dialog) return null;
-		const r = await dialog.showOpenDialog({ properties: ['openDirectory'] });
-		return r.canceled ? null : (r.filePaths[0] ?? null);
-	} catch {
-		return null;
-	}
 }
 
 /**
@@ -1156,7 +1168,7 @@ function newKeyFields(box: HTMLElement, changed: (pw: string, pw2: string) => vo
 		const n = strength(pw);
 		meter.empty();
 		meter.dataset.level = String(n);
-		meter.createDiv({ cls: 'ambraia-meter-bar' }).style.width = `${(n + 1) * 24}px`;
+		meter.createDiv({ cls: 'ambraia-meter-bar' }).setCssStyles({ width: `${(n + 1) * 24}px` });
 		meter.createSpan({ text: pw ? tx('Robustezza: {0}', STRENGTH()[n]) : '' });
 		changed(pw, pw2);
 	};
@@ -1340,7 +1352,32 @@ export class EncryptionModal extends Modal {
 					await this.plugin.saveSettings();
 				} else {
 					t.sharedKey = shared || !peers.length;
-					await mgr.reformat({ password: pw, alg, names, kdf: s.syncKdf }, mode === 'enable');
+					// the dialog shows each stage and closes as soon as the new key is saved:
+					// the old cloud copies are then moved to the trash in the background (progress in the status bar)
+					let committed = false;
+					let markCommitted = () => {};
+					const saved = new Promise<void>((r) => (markCommitted = r));
+					const job = mgr.reformat({ password: pw, alg, names, kdf: s.syncKdf }, mode === 'enable', {
+						onProgress: (msg) => {
+							if (!committed) status.setText(msg);
+						},
+						onCommitted: () => {
+							committed = true;
+							markCommitted();
+						},
+					});
+					// whichever comes first: the key saved (go on in background) or the whole job (done or failed)
+					await Promise.race([saved, job]);
+					if (committed) {
+						job.then(
+							() => new Notice(tx('Pulizia del cloud completata.')),
+							(e) => new Notice(tx('Errore: {0}', (e as Error).message)),
+						);
+						new Notice(tx('Cifratura aggiornata. Pulisco i vecchi file nel cloud in background: puoi continuare a lavorare.'));
+						this.close();
+						this.done();
+						return;
+					}
 				}
 				new Notice(tx('Fatto.'));
 				this.close();

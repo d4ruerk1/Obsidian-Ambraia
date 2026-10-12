@@ -457,10 +457,14 @@ export class SyncHub {
 	renderStatus() {
 		const el = this.statusEl;
 		if (!el) return;
-		// one indicator per sync that is really in use: Obsidian Sync alone keeps only its own icon,
-		// Ambraia alone (or nothing configured yet) shows Ambraia's, both configured show both
-		const onlyNative = !this.settings.syncTargets.length && obsidianSyncActive(this.app);
-		el.toggleClass('ambraia-hidden', !this.settings.syncStatusBar || onlyNative);
+		// one indicator per sync that is really in use:
+		// - Ambraia configured, Obsidian Sync not linked → only Ambraia's icon (Obsidian's idle icon is hidden)
+		// - Ambraia not configured → only Obsidian's icon
+		// - both really in use → both icons
+		const ours = this.settings.syncTargets.length > 0;
+		const native = obsidianSyncActive(this.app);
+		el.toggleClass('ambraia-hidden', !this.settings.syncStatusBar || !ours);
+		document.body.toggleClass('ambraia-hide-native-sync', ours && !native);
 		const { icon, text, tip } = this.statusText();
 		el.empty();
 		const ic = el.createSpan({ cls: 'ambraia-sync-icon' });
@@ -525,8 +529,8 @@ export function obsidianSyncActive(app: App): boolean {
 		const ip = (app as any).internalPlugins;
 		const p = ip?.getEnabledPluginById?.('sync') ?? (ip?.plugins?.sync?.enabled ? ip.plugins.sync.instance : null);
 		if (!p) return false;
-		// when the instance exposes its remote vault, an unlinked plugin does not count as configured
-		return 'vaultId' in p ? !!p.vaultId : true;
+		// only a plugin linked to a remote vault counts: when that cannot be told, it is treated as not in use
+		return typeof p.vaultId === 'string' ? !!p.vaultId : false;
 	} catch {
 		return false;
 	}

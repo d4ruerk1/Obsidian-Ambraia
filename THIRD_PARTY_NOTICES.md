@@ -34,7 +34,7 @@ Interface icons are drawn by Obsidian itself (Lucide icon set, ISC licence, ship
 
 ## Simple Icons (service logos)
 
-The SVG paths of a few service logos (Google Drive, Dropbox, MEGA, Proton, Anthropic, Google Gemini, Mistral AI, Ollama, LM Studio, OpenRouter, DeepSeek) come from [Simple Icons](https://github.com/simple-icons/simple-icons) v16, released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). CC0 covers the drawings only: the logos remain trademarks of their owners, are used only to identify the corresponding service and do not imply endorsement.
+The SVG paths of a few service logos (Google Drive, Dropbox, MEGA, Proton, Anthropic, Google Gemini, Mistral AI, Ollama, LM Studio, OpenRouter, DeepSeek) come from [Simple Icons](https://github.com/simple-icons/simple-icons) v16, released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). CC0 covers the drawings only: the logos remain trademarks of their owners, are used only to identify the corresponding service and do not imply endorsement. All marks are drawn in a single colour inside Ambraia's own badge. Microsoft OneDrive and pCloud are shown with generic cloud glyphs drawn for Ambraia (a plain cloud and a cloud with a "p"): they are not the official logos of those services.
 
 ## Cover photos (Unsplash, via Lorem Picsum)
 

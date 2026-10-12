@@ -1,6 +1,6 @@
 {
   "name": "ambraia",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Add page icons and covers, databases, a calendar, templates, slash and @ menus, optional end-to-end encrypted multi-cloud sync and an optional AI assistant (off by default).",
   "main": "main.js",
   "author": "d4ruerk1",

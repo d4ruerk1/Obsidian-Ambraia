@@ -1,6 +1,6 @@
 /**
  * Local tools for the assistant: documents (PDF, Office, OpenDocument, EPUB, canvas),
- * web pages, YouTube transcripts, X/Twitter posts, web search (DuckDuckGo or your own SearXNG), long-term memory and
+ * subtitles, web pages, YouTube (official APIs only), X/Twitter posts (oEmbed), web search (official APIs only), long-term memory and
  * projects. Everything runs on the device; nothing goes through a third-party relay.
  */
 import { App, loadPdfJs, normalizePath, parseYaml, requestUrl, TFile, TFolder } from 'obsidian';
@@ -177,7 +177,7 @@ export async function pdfText(buf: ArrayBuffer, maxPages = 300): Promise<string>
 
 // ------------------------------------------------------------------ vault files
 
-export const DOC_EXT = ['md', 'txt', 'csv', 'json', 'canvas', 'pdf', 'docx', 'pptx', 'xlsx', 'odt', 'odp', 'ods', 'epub', 'html', 'htm'];
+export const DOC_EXT = ['md', 'txt', 'csv', 'json', 'canvas', 'pdf', 'docx', 'pptx', 'xlsx', 'odt', 'odp', 'ods', 'epub', 'html', 'htm', 'srt', 'vtt'];
 export const isReadable = (f: TFile) => DOC_EXT.includes(f.extension.toLowerCase());
 
 const fileCache = new Map<string, { mtime: number; text: string }>();
@@ -200,6 +200,7 @@ export async function fileText(app: App, f: TFile): Promise<string> {
 			text = '';
 		}
 	} else if (ext === 'html' || ext === 'htm') text = htmlToText(await app.vault.cachedRead(f)).text;
+	else if (ext === 'srt' || ext === 'vtt') text = subtitleText(await app.vault.cachedRead(f));
 	else {
 		const buf = await app.vault.readBinary(f);
 		text = ext === 'pdf' ? await pdfText(buf) : await officeText(buf, ext);
@@ -285,47 +286,108 @@ const ts = (sec: number) => {
 	return h ? `${h}:${String(m % 60).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 };
 
-/** Transcript of a YouTube video read from its public captions (no API key). */
-export async function youtubeTranscript(id: string): Promise<WebDoc> {
-	const url = 'https://www.youtube.com/watch?v=' + id;
-	const page = await net(url + '&hl=it');
-	const html = page.text;
-	const vi = html.indexOf('"videoDetails":');
-	const details = (vi >= 0 ? jsonAt(html, html.indexOf('{', vi)) : null) as { title?: string; author?: string; shortDescription?: string } | null;
-	const ci = html.indexOf('"captionTracks":');
-	const tracks = (ci >= 0 ? jsonAt(html, html.indexOf('[', ci)) : null) as { baseUrl: string; languageCode: string; kind?: string }[] | null;
-	const title = details?.title ? `${details.title}${details.author ? ' – ' + details.author : ''}` : tx('Video YouTube {0}', id);
-	if (!tracks?.length) {
-		const desc = details?.shortDescription ? tx('\n\nDescrizione del video:\n{0}', details.shortDescription) : '';
-		if (!desc) throw new Error(tx('Questo video non ha sottotitoli disponibili (o YouTube ha bloccato la richiesta).'));
-		return { url, title, text: tx('(nessuna trascrizione disponibile)') + desc, kind: 'youtube' };
-	}
-	const pick = tracks.find((t) => t.languageCode.startsWith('it') && t.kind !== 'asr') ?? tracks.find((t) => t.languageCode.startsWith('it')) ?? tracks.find((t) => t.kind !== 'asr') ?? tracks[0];
-	const lines: string[] = [];
-	const cap = await net(pick.baseUrl + (pick.baseUrl.includes('fmt=') ? '' : '&fmt=json3'));
-	if (cap.text.trim().startsWith('{')) {
-		const j = JSON.parse(cap.text) as { events?: { tStartMs?: number; segs?: { utf8: string }[] }[] };
-		let mark = -60;
-		let cur = '';
-		for (const e of j.events ?? []) {
-			if (!e.segs) continue;
-			const t = (e.tStartMs ?? 0) / 1000;
-			if (t - mark >= 30 && cur) {
-				lines.push(cur.trim());
-				cur = '';
-			}
-			if (!cur) {
-				mark = t;
-				cur = `[${ts(t)}] `;
-			}
-			cur += e.segs.map((s) => s.utf8).join('').replace(/\n/g, ' ') + ' ';
+/** Keys and choices for the web tools (from the AI settings and the OS secret storage). */
+export interface WebCtx {
+	/** Google Gemini API key: the video is "watched" by Gemini (official API, free tier available). */
+	geminiKey?: string;
+	/** YouTube Data API v3 key: title, channel, duration and description. */
+	youtubeKey?: string;
+	/** 'title' = only the oEmbed title, even when keys are present. */
+	youtube?: 'auto' | 'title';
+}
+
+/** Gemini model used for YouTube and Google Search: fast and included in the free tier. */
+export const GEMINI_TOOL_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest'];
+const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models/';
+
+interface GeminiReply {
+	candidates?: {
+		content?: { parts?: { text?: string }[] };
+		groundingMetadata?: { webSearchQueries?: string[]; searchEntryPoint?: { renderedContent?: string }; groundingChunks?: { web?: { uri?: string; title?: string } }[] };
+	}[];
+	error?: { message?: string };
+}
+
+/** One generateContent call on the official Gemini API (tries the next model when one is unknown). */
+export async function geminiGenerate(key: string, body: Record<string, unknown>): Promise<GeminiReply> {
+	let last = '';
+	for (const model of GEMINI_TOOL_MODELS) {
+		const r = await net(GEMINI_API + model + ':generateContent', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body) });
+		let j: GeminiReply = {};
+		try {
+			j = JSON.parse(r.text) as GeminiReply;
+		} catch {
+			/* not JSON */
 		}
-		if (cur.trim()) lines.push(cur.trim());
-	} else {
-		for (const m of cap.text.matchAll(/<text start="([\d.]+)"[^>]*>([\s\S]*?)<\/text>/g)) lines.push(`[${ts(Number(m[1]))}] ${decodeEntities(decodeEntities(m[2]))}`);
+		if (r.status < 400) return j;
+		last = j.error?.message || `HTTP ${r.status}`;
+		if (r.status !== 404) break;
 	}
-	if (!lines.length) throw new Error(tx('YouTube non ha restituito la trascrizione di questo video.'));
-	return { url, title, text: tx('Trascrizione ({0}{1}):\n\n{2}', pick.languageCode, pick.kind === 'asr' ? tx(', automatica') : '', lines.join('\n')), kind: 'youtube' };
+	throw new Error(tx('Google Gemini: {0}', last));
+}
+
+const geminiText = (j: GeminiReply) => (j.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('').trim();
+
+/** ISO 8601 duration (PT1H2M3S) → 1:02:03. */
+function isoDuration(d: string): string {
+	const m = /^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(d);
+	if (!m) return '';
+	return ts(Number(m[1] ?? 0) * 86400 + Number(m[2] ?? 0) * 3600 + Number(m[3] ?? 0) * 60 + Number(m[4] ?? 0));
+}
+
+const YT_PROMPT =
+	'Transcribe the speech of this video in its original language, with a [m:ss] timestamp at the start of each paragraph. ' +
+	'If the video is longer than about 20 minutes, write instead a detailed summary by section, each with its [m:ss] timestamp, quoting the key sentences. ' +
+	'Describe briefly anything important that is only shown on screen. Do not add comments of your own.';
+
+/**
+ * A YouTube video, only through official APIs (YouTube's terms forbid automated access to its pages,
+ * so the watch page and its captions are never downloaded):
+ * 1. with a Gemini key, Google Gemini watches the public video and returns transcript or summary;
+ * 2. with a YouTube Data API key, title, channel, duration and description;
+ * 3. otherwise the title from the public oEmbed endpoint.
+ * The user can always paste the transcript or attach a subtitle file (.srt/.vtt).
+ */
+export async function youtubeVideo(id: string, ctx: WebCtx = {}): Promise<WebDoc> {
+	const url = 'https://www.youtube.com/watch?v=' + id;
+	let title = tx('Video YouTube {0}', id);
+	const r = await net('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(url));
+	if (r.status < 400) {
+		try {
+			const j = JSON.parse(r.text) as { title?: string; author_name?: string };
+			if (j.title) title = `${j.title}${j.author_name ? ' – ' + j.author_name : ''}`;
+		} catch {
+			/* keep the generic title */
+		}
+	}
+	const notes: string[] = [];
+	if (ctx.youtube !== 'title' && ctx.geminiKey) {
+		try {
+			const j = await geminiGenerate(ctx.geminiKey, { contents: [{ role: 'user', parts: [{ file_data: { file_uri: url } }, { text: YT_PROMPT }] }], generationConfig: { mediaResolution: 'MEDIA_RESOLUTION_LOW' } });
+			const text = geminiText(j);
+			if (text) return { url, title, text: tx('Contenuto del video ricavato da Google Gemini (può contenere errori):') + '\n\n' + text, kind: 'youtube' };
+		} catch (e) {
+			notes.push(e instanceof Error ? e.message : String(e));
+		}
+	}
+	if (ctx.youtube !== 'title' && ctx.youtubeKey) {
+		try {
+			const d = await net(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${encodeURIComponent(id)}&key=${encodeURIComponent(ctx.youtubeKey)}`);
+			const j = JSON.parse(d.text) as { items?: { snippet?: { title?: string; channelTitle?: string; description?: string; publishedAt?: string }; contentDetails?: { duration?: string } }[]; error?: { message?: string } };
+			const v = j.items?.[0];
+			if (d.status >= 400) throw new Error(tx('YouTube Data API: {0}', j.error?.message ?? `HTTP ${d.status}`));
+			if (v?.snippet) {
+				const sn = v.snippet;
+				title = `${sn.title ?? title}${sn.channelTitle ? ' – ' + sn.channelTitle : ''}`;
+				const meta = [sn.publishedAt ? tx('Pubblicato: {0}', sn.publishedAt.slice(0, 10)) : '', v.contentDetails?.duration ? tx('Durata: {0}', isoDuration(v.contentDetails.duration)) : ''].filter(Boolean).join(' · ');
+				return { url, title, text: `${meta}\n\n${tx('Descrizione:')}\n${(sn.description ?? '').trim() || '—'}\n\n${tx('(Trascrizione non disponibile tramite le API ufficiali: se serve, incollala o allega un file di sottotitoli .srt/.vtt.)')}`, kind: 'youtube' };
+			}
+		} catch (e) {
+			notes.push(e instanceof Error ? e.message : String(e));
+		}
+	}
+	const why = notes.length ? '\n\n' + tx('(Lettura del video non riuscita: {0})', notes.join('; ')) : '';
+	return { url, title, text: tx('Video YouTube: «{0}». Ambraia legge i video solo tramite le API ufficiali: aggiungi una chiave Google Gemini (gratuita) nelle impostazioni AI per farlo “guardare” a Gemini, oppure incolla qui la trascrizione (sotto il video, «Mostra trascrizione») o allega un file di sottotitoli .srt/.vtt.', title) + why, kind: 'youtube' };
 }
 
 /** Text of a post on X/Twitter via the public oEmbed endpoint. */
@@ -336,15 +398,16 @@ async function xPost(url: string): Promise<WebDoc> {
 	return { url, title: tx('Post di {0}', j.author_name ?? 'X'), text: htmlToText(j.html ?? '').text, kind: 'x' };
 }
 
-/** Downloads a URL and returns its readable text: YouTube → transcript, X → post, PDF/Office → document text. */
-export async function fetchWeb(url: string): Promise<WebDoc> {
+/** Downloads a URL the user asked for and returns its readable text: YouTube → official APIs (see youtubeVideo), X → post (oEmbed), PDF/Office → document text. */
+export async function fetchWeb(url: string, ctx: WebCtx = {}): Promise<WebDoc> {
 	url = url.trim().replace(/[).,;:!?»”']+$/, '');
 	if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-	const c = webCache.get(url);
+	const ck = (youtubeId(url) ? `${ctx.youtube ?? 'auto'}|${ctx.geminiKey ? 'g' : ''}${ctx.youtubeKey ? 'y' : ''}|` : '') + url;
+	const c = webCache.get(ck);
 	if (c && Date.now() - c.at < 15 * 60_000) return c.doc;
 	let doc: WebDoc;
 	const yt = youtubeId(url);
-	if (yt) doc = await youtubeTranscript(yt);
+	if (yt) doc = await youtubeVideo(yt, ctx);
 	else if (/^https?:\/\/(www\.|mobile\.)?(twitter|x)\.com\/[^/]+\/status\/\d+/i.test(url)) doc = await xPost(url);
 	else {
 		const ext = /\.(pdf|docx|pptx|xlsx|odt|odp|ods|epub)(?:[?#]|$)/i.exec(url)?.[1]?.toLowerCase();
@@ -360,7 +423,7 @@ export async function fetchWeb(url: string): Promise<WebDoc> {
 		} else doc = { url, title: url, text: tidy(r.text), kind: 'pagina' };
 	}
 	if (!doc.text.trim()) throw new Error(tx('La pagina non contiene testo leggibile (potrebbe richiedere JavaScript o un accesso).'));
-	webCache.set(url, { at: Date.now(), doc });
+	webCache.set(ck, { at: Date.now(), doc });
 	return doc;
 }
 
@@ -374,38 +437,141 @@ export interface SearchHit {
 	snippet: string;
 }
 
-const strip = (s: string) => tidy(decodeEntities(s.replace(/<[^>]+>/g, '')));
 
-/** Web search without API keys: DuckDuckGo (HTML version) or a self-hosted SearXNG instance. */
-export async function webSearch(s: Pick<AmbraiaSettings, 'aiWebSearch' | 'aiSearxngUrl'>, query: string, limit = 6): Promise<SearchHit[]> {
-	if (s.aiWebSearch === 'searxng') {
-		const base = s.aiSearxngUrl.trim().replace(/\/+$/, '');
+export interface SearchOpts {
+	mode: 'off' | 'auto' | 'searxng';
+	searxngUrl?: string;
+	/** Gemini key: in "auto" the search goes through Google Search (Gemini grounding, free tier). */
+	geminiKey?: string;
+	/** Language for the free sources (Wikipedia), e.g. "it". */
+	lang?: string;
+}
+
+export interface SearchResult {
+	engine: 'google' | 'searxng' | 'free';
+	/** Short answer written by Gemini from Google Search results. */
+	answer?: string;
+	hits: SearchHit[];
+	/** Google Search Suggestions (HTML to show as is, as required by the Gemini API terms). */
+	suggestions?: string;
+	queries?: string[];
+}
+
+const stripTags = (h: string) => decodeEntities(h.replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
+
+/** Google Search through the official Gemini API ("Grounding with Google Search"). */
+async function googleSearch(key: string, query: string, limit: number): Promise<SearchResult> {
+	const j = await geminiGenerate(key, {
+		contents: [{ role: 'user', parts: [{ text: `Search the web and answer concisely, in the language of the query, citing the facts you find: ${query}` }] }],
+		tools: [{ google_search: {} }],
+	});
+	const c = j.candidates?.[0];
+	const g = c?.groundingMetadata;
+	const hits = (g?.groundingChunks ?? [])
+		.map((x) => x.web)
+		.filter((w): w is { uri: string; title?: string } => !!w?.uri)
+		.slice(0, limit)
+		.map((w) => ({ title: w.title || w.uri, url: w.uri, snippet: '' }));
+	return { engine: 'google', answer: geminiText(j), hits, suggestions: g?.searchEntryPoint?.renderedContent, queries: g?.webSearchQueries };
+}
+
+/** Free sources without keys, through their official APIs: Wikipedia (MediaWiki) and DuckDuckGo Instant Answers. */
+async function freeSearch(query: string, limit: number, lang = 'en'): Promise<SearchResult> {
+	const q = encodeURIComponent(query);
+	const langs = [...new Set([/^[a-z]{2,3}$/.test(lang) ? lang : 'en', 'en'])];
+	const [ddg, ...wikis] = await Promise.all([
+		net(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&skip_disambig=1&t=ambraia`).catch(() => null),
+		...langs.map((l) => net(`https://${l}.wikipedia.org/w/api.php?action=query&list=search&format=json&utf8=1&srlimit=${limit}&srsearch=${q}`).then((r) => ({ l, r })).catch(() => null)),
+	]);
+	const hits: SearchHit[] = [];
+	let answer = '';
+	if (ddg && ddg.status < 400) {
+		try {
+			const j = JSON.parse(ddg.text) as { Heading?: string; AbstractText?: string; AbstractURL?: string; Answer?: string; Definition?: string; DefinitionURL?: string; RelatedTopics?: { Text?: string; FirstURL?: string; Topics?: { Text?: string; FirstURL?: string }[] }[] };
+			answer = (j.Answer || '').toString().trim();
+			if (j.AbstractText && j.AbstractURL) hits.push({ title: j.Heading || j.AbstractURL, url: j.AbstractURL, snippet: j.AbstractText });
+			if (j.Definition && j.DefinitionURL) hits.push({ title: j.Heading || j.DefinitionURL, url: j.DefinitionURL, snippet: j.Definition });
+			for (const t of (j.RelatedTopics ?? []).flatMap((t) => (t.Topics ? t.Topics : [t])).slice(0, 3)) if (t.Text && t.FirstURL) hits.push({ title: t.Text.split(' - ')[0].slice(0, 80), url: t.FirstURL, snippet: t.Text });
+		} catch {
+			/* no instant answer */
+		}
+	}
+	for (const w of wikis) {
+		if (!w || w.r.status >= 400) continue;
+		try {
+			const j = JSON.parse(w.r.text) as { query?: { search?: { title: string; snippet?: string }[] } };
+			for (const x of j.query?.search ?? []) hits.push({ title: `${x.title} – Wikipedia`, url: `https://${w.l}.wikipedia.org/wiki/${encodeURIComponent(x.title.replace(/ /g, '_'))}`, snippet: stripTags(x.snippet ?? '') });
+		} catch {
+			/* skip */
+		}
+	}
+	const seen = new Set<string>();
+	return { engine: 'free', answer: answer || undefined, hits: hits.filter((h) => !seen.has(h.url) && seen.add(h.url)).slice(0, limit) };
+}
+
+/**
+ * Web search, only through official APIs (search engines' result pages are never scraped):
+ * - "auto" (default once AI is on): Google Search through Gemini when a Gemini key is set (free
+ *   tier), otherwise free sources without keys (DuckDuckGo Instant Answers + Wikipedia);
+ * - "searxng": the JSON API of a SearXNG instance chosen by the user.
+ */
+export async function webSearch(o: SearchOpts, query: string, limit = 6): Promise<SearchResult> {
+	if (o.mode === 'searxng') {
+		const base = (o.searxngUrl ?? '').trim().replace(/\/+$/, '');
 		if (!base) throw new Error(tx('Indica l’indirizzo della tua istanza SearXNG nelle impostazioni AI.'));
 		const r = await net(`${base}/search?format=json&q=${encodeURIComponent(query)}`);
 		if (r.status === 403) throw new Error(tx('SearXNG rifiuta il formato JSON: aggiungi "json" a search.formats in settings.yml.'));
 		if (r.status >= 400) throw new Error(tx('SearXNG ha risposto con errore HTTP {0}.', r.status));
 		const j = JSON.parse(r.text) as { results?: { title: string; url: string; content?: string }[] };
-		return (j.results ?? []).slice(0, limit).map((x) => ({ title: x.title, url: x.url, snippet: x.content ?? '' }));
+		return { engine: 'searxng', hits: (j.results ?? []).slice(0, limit).map((x) => ({ title: x.title, url: x.url, snippet: x.content ?? '' })) };
 	}
-	if (s.aiWebSearch !== 'duckduckgo') throw new Error(tx('La ricerca web è disattivata nelle impostazioni AI.'));
-	const r = await net('https://html.duckduckgo.com/html/', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-		body: `q=${encodeURIComponent(query)}&kl=it-it`,
-	});
-	if (r.status >= 400 || /anomaly|captcha/i.test(r.text.slice(0, 4000))) throw new Error(tx('DuckDuckGo ha bloccato la ricerca: riprova più tardi o usa una tua istanza SearXNG.'));
-	const links = [...r.text.matchAll(/<a[^>]+class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)];
-	const snippets = [...r.text.matchAll(/class="result__snippet"[^>]*>([\s\S]*?)<\/(?:a|div|td)>/g)].map((m) => strip(m[1]));
-	const hits: SearchHit[] = [];
-	links.forEach((m, i) => {
-		let href = decodeEntities(m[1]);
-		const ud = /[?&]uddg=([^&]+)/.exec(href);
-		if (ud) href = decodeURIComponent(ud[1]);
-		if (href.startsWith('//')) href = 'https:' + href;
-		if (/duckduckgo\.com\/y\.js|ad_domain=/.test(href)) return;
-		hits.push({ title: strip(m[2]), url: href, snippet: snippets[i] ?? '' });
-	});
-	return hits.slice(0, limit);
+	if (o.mode !== 'auto') throw new Error(tx('La ricerca web è disattivata nelle impostazioni AI.'));
+	if (o.geminiKey) {
+		try {
+			const g = await googleSearch(o.geminiKey, query, limit);
+			if (g.answer || g.hits.length) return g;
+		} catch {
+			/* quota or network: the free sources answer instead */
+		}
+	}
+	return freeSearch(query, limit, o.lang);
+}
+
+/** Search result as text for the model. */
+export function searchText(r: SearchResult): string {
+	const src = r.engine === 'google' ? tx('Fonte: Ricerca Google (tramite Gemini).') : r.engine === 'free' ? tx('Fonti gratuite: DuckDuckGo Instant Answers e Wikipedia (per pagine più specifiche aggiungi una chiave Gemini o usa SearXNG).') : 'SearXNG';
+	const list = r.hits.map((h, i) => `${i + 1}. ${h.title}\n   ${h.url}${h.snippet ? '\n   ' + h.snippet : ''}`).join('\n');
+	if (!r.answer && !list) return tx('Nessun risultato.');
+	return [src, r.answer ? tx('Risposta: {0}', r.answer) : '', list].filter(Boolean).join('\n\n');
+}
+
+// ------------------------------------------------------------------ subtitles
+
+/** Plain text with [m:ss] marks from an .srt or .vtt subtitle file (tags, cue numbers and repeats dropped). */
+export function subtitleText(raw: string): string {
+	const out: string[] = [];
+	let last = -1e9;
+	let prev = '';
+	for (const block of raw.replace(/\r/g, '').split(/\n{2,}/)) {
+		const lines = block.split('\n').filter((l) => l.trim());
+		const ti = lines.findIndex((l) => /-->/.test(l));
+		if (ti < 0) continue;
+		const m = /(?:(\d+):)?(\d{1,2}):(\d{2})[.,]\d+\s*-->/.exec(lines[ti]);
+		const sec = m ? Number(m[1] ?? 0) * 3600 + Number(m[2]) * 60 + Number(m[3]) : 0;
+		const text = lines
+			.slice(ti + 1)
+			.map((l) => decodeEntities(l.replace(/<[^>]+>/g, '')).trim())
+			.filter(Boolean)
+			.join(' ');
+		if (!text || text === prev) continue;
+		prev = text;
+		// a new paragraph (with its time) every 30 seconds or more
+		if (sec - last >= 30) {
+			out.push(`[${ts(sec)}] ${text}`);
+			last = sec;
+		} else out[out.length - 1] += ' ' + text;
+	}
+	return out.join('\n');
 }
 
 // ------------------------------------------------------------------ memory

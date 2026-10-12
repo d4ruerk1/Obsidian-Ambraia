@@ -237,8 +237,10 @@ describe('calendar quick actions', () => {
 		const day = (moment as any)().format('YYYY-MM-DD');
 		const next = (moment as any)().add(1, 'day').format('YYYY-MM-DD');
 		await view.addTask(day, 'consegna');
-		const path = `Diario/${day}.md`;
+		// tasks added from the calendar go to the "Calendario" folder, not to the daily note
+		const path = `Calendario/${day}.md`;
 		expect(String(app.vault.data.get(path))).toContain(`- [ ] consegna 📅 ${day}`);
+		expect(app.vault.data.get(`Diario/${day}.md`)).toBeUndefined();
 		await sleep(60);
 		await view.render();
 		const t = { file: app.vault.getFileByPath(path), line: String(app.vault.data.get(path)).split('\n').findIndex((l: string) => l.includes('consegna')), text: 'consegna', done: false, date: day };

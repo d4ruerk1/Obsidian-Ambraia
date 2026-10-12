@@ -7,7 +7,8 @@ import { AiError, chat, ChatMsg, ChatOptions, ChatResult, embed, Endpoint, listM
 import { AiModel, newModelId, normalizeBaseUrl, preset } from './providers';
 import { chunkNote, cosine, formatContext, Hit, isExcluded, mergeHits, VaultIndex, VectorStoreData } from './retrieval';
 import { buildTools, Tool, ToolContext } from './tools';
-import { clip, fetchWeb, fileText, inProject, Project, readMemory } from './local';
+import { clip, fetchWeb, fileText, inProject, Project, readMemory, SearchOpts, WebCtx } from './local';
+import { getLanguage } from 'obsidian';
 import { tx } from '../i18n';
 
 export type ChatMode = 'chat' | 'vault' | 'agent';
@@ -23,6 +24,8 @@ export interface RunEvents {
 	onToolStart?(id: string, label: string): void;
 	onToolEnd?(id: string, ok: boolean): void;
 	onNotice?(text: string): void;
+	/** Google Search Suggestions to show under the answer (Gemini API terms). */
+	onSearch?(s: { html?: string; queries: string[] }): void;
 	confirm?(title: string, preview: string): Promise<boolean>;
 	signal?: AbortSignal;
 	/** Active project: instructions, attached material and the part of the vault to search. */
@@ -203,6 +206,21 @@ export class AiManager {
 		this.plugin.app.secretStorage.setSecret(SECRET_PREFIX + provider, key);
 	}
 
+	/** Keys for the web tools: the Gemini key (also used by the Gemini provider) and an optional YouTube Data API key. */
+	webCtx(): WebCtx {
+		return { geminiKey: this.getKey('gemini') || undefined, youtubeKey: this.getKey('youtube') || undefined, youtube: this.s.aiYoutube };
+	}
+
+	searchOpts(): SearchOpts {
+		let lang = 'en';
+		try {
+			lang = (this.s.language && this.s.language !== 'auto' ? this.s.language : getLanguage()).slice(0, 2).toLowerCase();
+		} catch {
+			/* older Obsidian */
+		}
+		return { mode: this.s.aiWebSearch, searxngUrl: this.s.aiSearxngUrl, geminiKey: this.getKey('gemini') || undefined, lang };
+	}
+
 	baseUrlFor(provider: string, override?: string): string {
 		return normalizeBaseUrl(override || this.s.aiProviderUrls[provider] || preset(provider).baseUrl);
 	}
@@ -298,7 +316,7 @@ export class AiManager {
 			try {
 				if (/^https?:\/\//i.test(item)) {
 					if (!this.s.aiWebAccess) continue;
-					const d = await fetchWeb(item);
+					const d = await fetchWeb(item, this.webCtx());
 					parts.push(tx('<pagina-web url="{0}" titolo="{1}">\n{2}\n</pagina-web>', d.url, d.title.replace(/"/g, "'"), clip(d.text, per)));
 					continue;
 				}
@@ -469,6 +487,7 @@ export class AiManager {
 			plugin: this.plugin,
 			touched,
 			scope,
+			onSearch: (x) => ev.onSearch?.(x),
 			confirm: async (title, preview) => {
 				if (this.s.aiWrites === 'never') return false;
 				if (this.s.aiWrites === 'auto') return true;

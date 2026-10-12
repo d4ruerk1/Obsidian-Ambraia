@@ -47,6 +47,7 @@ const T = {
 	fail: {
 		password: IT ? 'Password errata.' : 'Wrong password.',
 		expired: IT ? 'Il link è scaduto.' : 'This link has expired.',
+		notyet: IT ? 'Il link non è ancora attivo: riprova più tardi.' : 'This link is not active yet: try again later.',
 		revoked: IT ? 'Il link è stato revocato da chi lo ha condiviso.' : 'The sender has revoked this link.',
 		exhausted: IT ? 'Il link ha raggiunto il numero massimo di aperture.' : 'This link has reached its maximum number of openings.',
 		gone: IT ? 'La nota non esiste più.' : 'The note no longer exists.',

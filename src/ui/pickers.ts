@@ -176,7 +176,7 @@ export class BannerPicker extends Modal {
 			const g = b.createDiv('ambraia-cover-grid');
 			GRADIENTS.forEach((css, i) => {
 				const c = g.createDiv({ cls: 'ambraia-cover-swatch', attr: { role: 'button', tabindex: '0' } });
-				c.style.background = css;
+				c.setCssStyles({ background: css });
 				c.onclick = () => this.pick(`gradient:${i}`);
 			});
 			for (const cat of PHOTO_CATEGORIES) {
@@ -184,7 +184,7 @@ export class BannerPicker extends Modal {
 				const grid = b.createDiv('ambraia-cover-grid is-photos');
 				for (const p of cat.photos) {
 					const c = grid.createDiv({ cls: 'ambraia-cover-swatch is-photo', attr: { role: 'button', tabindex: '0', 'aria-label': tx('Foto di {0} (Unsplash)', p.author) } });
-					c.style.backgroundImage = `url("${p.thumb}")`;
+					c.setCssStyles({ backgroundImage: `url("${p.thumb}")` });
 					c.onclick = () => void this.pickPhoto(p, c);
 				}
 			}

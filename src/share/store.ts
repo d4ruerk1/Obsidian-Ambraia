@@ -44,6 +44,8 @@ export interface ShareRecord {
 	/** name of the device that created it */
 	by: string;
 	expires: number | null;
+	/** the link opens only from this time on (null / missing = right away) */
+	starts?: number | null;
 	revoked: boolean;
 	deleted: boolean;
 	url: string;
@@ -86,14 +88,15 @@ export function usesOf(p: ShareProfile): number {
 }
 
 /** Why a link does not open any more (null: it works). */
-export function shareState(r: ShareRecord, now = Date.now()): 'revoked' | 'expired' | null {
+export function shareState(r: ShareRecord, now = Date.now()): 'revoked' | 'expired' | 'notyet' | null {
 	if (r.revoked || r.deleted) return 'revoked';
 	if (r.expires && now > r.expires) return 'expired';
+	if (r.starts && now < r.starts) return 'notyet';
 	return null;
 }
 
 /** Why a profile does not open any more (null: it works). */
-export function profileState(r: ShareRecord, p: ShareProfile, now = Date.now()): 'revoked' | 'expired' | 'exhausted' | null {
+export function profileState(r: ShareRecord, p: ShareProfile, now = Date.now()): 'revoked' | 'expired' | 'notyet' | 'exhausted' | null {
 	const s = shareState(r, now);
 	if (s) return s;
 	if (p.expires && now > p.expires) return 'expired';
@@ -291,7 +294,7 @@ export class ShareStore {
 	}
 
 	/** New link: only a secret travels, the note is served by the devices of the vault. */
-	async create(path: string, title: string, opts: { expires: number | null; profiles: ProfileInput[] }): Promise<ShareRecord> {
+	async create(path: string, title: string, opts: { expires: number | null; starts?: number | null; profiles: ProfileInput[] }): Promise<ShareRecord> {
 		const secret = randomBytes(32);
 		const relay = this.host.relayUrl();
 		const { log2m, t } = this.host.argon?.() ?? ARGON;
@@ -305,6 +308,7 @@ export class ShareStore {
 			updated: now,
 			by: this.host.deviceName(),
 			expires: opts.expires,
+			...(opts.starts ? { starts: opts.starts } : {}),
 			revoked: false,
 			deleted: false,
 			url,
@@ -320,11 +324,15 @@ export class ShareStore {
 	}
 
 	/** New settings for a link and its profiles (profiles left out are removed). */
-	async update(id: string, patch: { expires?: number | null; revoked?: boolean; profiles?: ProfileInput[]; reset?: string[] }) {
+	async update(id: string, patch: { expires?: number | null; starts?: number | null; revoked?: boolean; profiles?: ProfileInput[]; reset?: string[] }) {
 		const cur = this.records.get(id);
 		if (!cur) throw new Error('unknown link');
 		const next: ShareRecord = { ...cur, updated: Date.now() };
 		if (patch.expires !== undefined) next.expires = patch.expires;
+		if (patch.starts !== undefined) {
+			if (patch.starts) next.starts = patch.starts;
+			else delete next.starts;
+		}
 		if (patch.revoked !== undefined) next.revoked = patch.revoked;
 		if (patch.profiles) next.profiles = await this.buildProfiles(unb64u(cur.secret)!, patch.profiles, cur.profiles, cur.log2m, cur.t);
 		for (const pid of patch.reset ?? []) next.profiles = next.profiles.map((p) => (p.id === pid ? { ...p, grants: [], resetAt: Date.now() } : p));

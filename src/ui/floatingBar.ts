@@ -95,8 +95,7 @@ export class FloatingBar {
 		if (top + h > vh - 4) top = Math.max(4, vh - h - 4);
 		let left = (a.left + a.right) / 2 - w / 2;
 		left = Math.max(6, Math.min(left, vw - w - 6));
-		el.style.top = `${Math.round(top)}px`;
-		el.style.left = `${Math.round(left)}px`;
+		el.setCssStyles({ top: `${Math.round(top)}px`, left: `${Math.round(left)}px` });
 		if (this.panel) this.placePanel(this.panel, this.panelBtn);
 	}
 
@@ -127,8 +126,7 @@ export class FloatingBar {
 		let top = r.bottom + 6;
 		if (top + p.offsetHeight > vh - 6) top = Math.max(6, r.top - p.offsetHeight - 6);
 		const left = Math.max(6, Math.min(r.left, vw - p.offsetWidth - 6));
-		p.style.top = `${Math.round(top)}px`;
-		p.style.left = `${Math.round(left)}px`;
+		p.setCssStyles({ top: `${Math.round(top)}px`, left: `${Math.round(left)}px` });
 	}
 
 	closePanel() {

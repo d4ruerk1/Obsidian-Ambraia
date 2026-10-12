@@ -3,7 +3,7 @@ import { moment } from '../ui/util';
 import type AmbraiaPlugin from '../main';
 import { createPeriodic, dailyConfig, findPeriodic } from '../calendar/dates';
 import type { ToolDef } from './client';
-import { fetchWeb, fileText, isReadable, remember, webSearch } from './local';
+import { fetchWeb, fileText, isReadable, remember, searchText, webSearch } from './local';
 import { tx } from '../i18n';
 import { markAiContent } from './marking';
 
@@ -18,6 +18,8 @@ export interface ToolContext {
 	touched: Set<string>;
 	/** Limits vault searches to the active project. */
 	scope?: (path: string) => boolean;
+	/** Google Search Suggestions of a web search (shown under the answer). */
+	onSearch?(s: { html?: string; queries: string[] }): void;
 }
 
 export interface Tool {
@@ -232,13 +234,13 @@ export function buildTools(plugin: AmbraiaPlugin): Tool[] {
 		{
 			def: {
 				name: 'read_web_page',
-				description: tx('Scarica e legge una pagina web. Funziona anche con PDF online, video YouTube (restituisce la trascrizione) e post di X/Twitter.'),
+				description: tx('Scarica e legge una pagina web. Funziona anche con PDF online, video YouTube (tramite le API ufficiali: con una chiave Gemini ottieni trascrizione o riassunto) e post di X/Twitter.'),
 				parameters: obj({ url: { type: 'string', description: tx('Indirizzo completo, es. https://…') } }, ['url']),
 			},
 			available: (p) => p.settings.aiWebAccess,
 			describe: (a) => tx('Leggo {0}', str(a.url).replace(/^https?:\/\/(www\.)?/, '').slice(0, 60)),
 			run: async (a) => {
-				const d = await fetchWeb(str(a.url));
+				const d = await fetchWeb(str(a.url), plugin.ai.webCtx());
 				return `Titolo: ${d.title}\nURL: ${d.url}\n\n${d.text.length > MAX_READ ? d.text.slice(0, MAX_READ) + '\n…(troncato)' : d.text}`;
 			},
 		},
@@ -250,10 +252,10 @@ export function buildTools(plugin: AmbraiaPlugin): Tool[] {
 			},
 			available: (p) => p.settings.aiWebSearch !== 'off',
 			describe: (a) => tx('Cerco sul web “{0}”', a.query ?? ''),
-			run: async (a) => {
-				const hits = await webSearch(plugin.settings, str(a.query), Math.min(10, Number(a.limit) || 6));
-				if (!hits.length) return tx('Nessun risultato.');
-				return hits.map((h, i) => `${i + 1}. ${h.title}\n   ${h.url}\n   ${h.snippet}`).join('\n');
+			run: async (a, ctx) => {
+				const r = await webSearch(plugin.ai.searchOpts(), str(a.query), Math.min(10, Number(a.limit) || 6));
+				if (r.engine === 'google' && (r.suggestions || r.queries?.length)) ctx.onSearch?.({ html: r.suggestions, queries: r.queries ?? [] });
+				return searchText(r);
 			},
 		},
 		{

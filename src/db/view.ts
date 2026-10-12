@@ -797,7 +797,7 @@ export class DbRenderer {
 			if (sort?.field === col) setIcon(th.createSpan('ambraia-db-th-sort'), sort.desc ? 'arrow-down' : 'arrow-up');
 			th.onclick = (e) => this.columnMenu(e, col);
 			const w = this.cfg.widths?.[col];
-			if (w) th.style.width = `${w}px`;
+			if (w) th.setCssStyles({ width: `${w}px` });
 			this.resizer(th, col);
 		}
 		const plus = thead.createEl('th', { cls: 'ambraia-db-th-add', attr: { 'aria-label': tx('Aggiungi proprietà') } });
@@ -848,7 +848,7 @@ export class DbRenderer {
 			const startX = e.clientX;
 			const startW = th.offsetWidth;
 			h.setPointerCapture(e.pointerId);
-			const move = (ev: PointerEvent) => (th.style.width = `${Math.max(60, startW + ev.clientX - startX)}px`);
+			const move = (ev: PointerEvent) => th.setCssStyles({ width: `${Math.max(60, startW + ev.clientX - startX)}px` });
 			const up = () => {
 				h.removeEventListener('pointermove', move);
 				h.removeEventListener('pointerup', up);
@@ -877,7 +877,7 @@ export class DbRenderer {
 			const cv = card.createDiv('ambraia-card-cover');
 			const bg = resolveBanner(this.app, r.cover, r.path) ?? this.firstImage(r);
 			if (bg?.kind === 'img') cv.createEl('img', { attr: { src: bg.src, loading: 'lazy' } });
-			else if (bg?.kind === 'css') cv.style.background = bg.value;
+			else if (bg?.kind === 'css') cv.setCssStyles({ background: bg.value });
 			else {
 				cv.addClass('is-empty');
 				if (r.icon) renderIcon(this.app, cv.createDiv('ambraia-card-cover-icon'), r.icon, r.path);

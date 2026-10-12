@@ -357,8 +357,8 @@ describe('simple sign-in and new devices', () => {
 		const code: string = pm.offer.code;
 		pm.close();
 		await tick();
-		const { redeemCode, PAIR_FOLDER } = await import('../src/sync/devices');
-		expect(await redeemCode(drive.api(PAIR_FOLDER) as any, code, { id: 'b', name: 'B' })).toBeNull();
+		const { redeemCode, pairFolder } = await import('../src/sync/devices');
+		expect(await redeemCode(drive.api(pairFolder('Vault')) as any, code, { id: 'b', name: 'B' })).toBeNull();
 	});
 
 	it('device list: a device can be disconnected or erased remotely', async () => {
@@ -451,10 +451,11 @@ const deviceIdOf = (d: { app: unknown }) => (globalThis as any).__ambraiaDeviceI
 describe('devices without roles', () => {
 	/** Real pairing through the cloud: A shows a code, B redeems it, A approves. */
 	async function pair(drive: FakeDrive, inviter: any, newcomer: { app: any; plugin: any }) {
-		const { redeemCode, PAIR_FOLDER, deviceId } = await import('../src/sync/devices');
+		const { redeemCode, pairFolder, deviceId } = await import('../src/sync/devices');
 		const { deviceSignKeys } = await import('../src/sync/manager');
 		const offer = await inviter.startPairing();
-		const claim: any = await redeemCode(drive.api(PAIR_FOLDER) as any, offer.code, { id: deviceId(newcomer.app), name: 'new', spub: (await deviceSignKeys(newcomer.app)).pub });
+		// 1.0.1: pairing offers live inside the vault folder
+		const claim: any = await redeemCode(drive.api(pairFolder(inviter.folder)) as any, offer.code, { id: deviceId(newcomer.app), name: 'new', spub: (await deviceSignKeys(newcomer.app)).pub });
 		expect(claim && claim !== 'outdated').toBeTruthy();
 		expect(await offer.checkAck()).toBeTruthy();
 		expect(offer.check).toBe(claim.check);
@@ -594,5 +595,25 @@ describe('devices without roles', () => {
 		const e = (await regA.list(deviceIdOf(A))).find((x: any) => x.info.id === deviceIdOf(B));
 		expect(e?.trusted).toBe(true);
 		expect(e?.pending).toBeNull();
+	});
+});
+
+describe('control folder inside the vault folder (1.0.1)', () => {
+	it('pairing and device list live in <folder>/.ambraia; the 1.0.0 list is moved there', async () => {
+		const { pairFolder, devicesFolder, legacyDevicesFolder, moveLegacyRegistry, isControlPath } = await import('../src/sync/devices');
+		expect(pairFolder('Vault')).toBe('Vault/.ambraia/pairing');
+		expect(await devicesFolder('Lavoro/Note')).toBe('Lavoro/Note/.ambraia/devices');
+		expect(isControlPath('Vault/.ambraia/pairing')).toBe(true);
+		expect(isControlPath('Vault')).toBe(false);
+		const drive = new FakeDrive('probe');
+		const old: any = drive.api(await legacyDevicesFolder('Vault'));
+		const root = await old.createRoot();
+		await old.upload('x0123456789abcdef0123.bin', root.id, new TextEncoder().encode('rec').buffer);
+		const dest: any = drive.api(await devicesFolder('Vault'));
+		expect(await moveLegacyRegistry(old, dest)).toBe(true);
+		const nr = await dest.findRoot();
+		const files = (await dest.listAll(nr.id)).filter((f: any) => !f.isFolder);
+		expect(files.map((f: any) => f.name)).toEqual(['x0123456789abcdef0123.bin']);
+		expect(await old.findRoot()).toBeNull();
 	});
 });

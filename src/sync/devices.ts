@@ -43,8 +43,26 @@ import {
  *   (a signed certificate, ECDSA P-256) and every removal is signed and checked by all devices.
  */
 
+/** Control folder (pairing offers, device list): since 1.0.1 it lives inside the vault folder chosen by the user. */
+export const CONTROL_DIR = '.ambraia';
+/** 1.0.0 kept the control folders at the top of the cloud space: still read for pairing and moved on first use. */
 export const PAIR_FOLDER = '.ambraia/pairing';
 export const DEVICES_ROOT = '.ambraia/devices';
+
+const inVault = (vaultFolder: string, sub: string) => {
+	const f = vaultFolder.replace(/^\/+|\/+$/g, '');
+	return f ? `${f}/${CONTROL_DIR}/${sub}` : `${CONTROL_DIR}/${sub}`;
+};
+
+/** Pairing offers of a vault folder. */
+export function pairFolder(vaultFolder: string): string {
+	return inVault(vaultFolder, 'pairing');
+}
+
+/** True for paths of Ambraia's control folders (never a vault folder to suggest). */
+export function isControlPath(path: string): boolean {
+	return /(^|\/)\.ambraia(\/|$)/.test(path);
+}
 export const CODE_TTL = 5 * 60_000;
 /** The approval must arrive within this time after the code was used. */
 export const GRANT_TTL = 3 * 60_000;
@@ -469,7 +487,33 @@ const MAX_CHAIN = 24;
 
 /** Folder of the device list for one cloud folder (devices of the same vault share it). */
 export async function devicesFolder(vaultFolder: string): Promise<string> {
+	return inVault(vaultFolder, 'devices');
+}
+
+/** Where 1.0.0 kept the device list of a vault folder (top of the cloud space). */
+export async function legacyDevicesFolder(vaultFolder: string): Promise<string> {
 	return `${DEVICES_ROOT}/${await shortHash(vaultFolder.toLowerCase())}`;
+}
+
+/**
+ * Moves a 1.0.0 device list into the vault folder: files are copied only when the new place is
+ * still empty, then the old folder goes to the cloud trash. Errors leave everything as it was.
+ */
+export async function moveLegacyRegistry(from: Remote, to: Remote): Promise<boolean> {
+	try {
+		const old = await from.findRoot();
+		if (!old) return false;
+		const files = await children(from, old);
+		const cur = await to.findRoot();
+		if (!cur || !(await children(to, cur)).length) {
+			const dest = cur ?? (await to.createRoot());
+			for (const f of files) await to.upload(f.name, dest.id, await from.download(f.id));
+		}
+		await (from.trashTree ? from.trashTree(old.id) : from.trash(old.id));
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 export class NotAllowedError extends Error {

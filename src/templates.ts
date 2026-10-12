@@ -966,12 +966,20 @@ export class TemplatePicker extends Modal {
 		ht.createDiv({ cls: 'ambraia-tpl-prev-name', text: t.name });
 		ht.createDiv({ cls: 'ambraia-tpl-prev-group', text: t.group });
 		p.createDiv({ cls: 'ambraia-tpl-prev-desc', text: t.desc });
+		// a small sheet that looks like the page that will be created: title, then each section
 		const o = outline(t);
-		if (o.heads.length) {
-			p.createDiv({ cls: 'ambraia-tpl-prev-sub', text: tx('Sezioni') });
-			const ul = p.createEl('ul', { cls: 'ambraia-tpl-prev-list' });
-			for (const x of o.heads) ul.createEl('li', { text: x });
+		const sheet = p.createDiv({ cls: 'ambraia-tpl-sheet', attr: { 'aria-label': tx('Sezioni') } });
+		const st = sheet.createDiv('ambraia-tpl-sheet-title');
+		st.createSpan({ cls: 'ambraia-tpl-sheet-icon', text: t.icon });
+		st.createSpan({ text: t.name });
+		const heads = o.heads.slice(0, 8);
+		for (const [i, x] of heads.entries()) {
+			sheet.createDiv({ cls: 'ambraia-tpl-sheet-h', text: x });
+			const lines = sheet.createDiv('ambraia-tpl-sheet-lines');
+			for (let k = 0; k < (i % 2 ? 1 : 2); k++) lines.createDiv('ambraia-tpl-sheet-line');
 		}
+		if (o.heads.length > heads.length) sheet.createDiv({ cls: 'ambraia-tpl-sheet-more', text: tx('+{0} altri', o.heads.length - heads.length) });
+		if (!heads.length) for (let k = 0; k < 4; k++) sheet.createDiv('ambraia-tpl-sheet-line');
 		const facts: string[] = [];
 		if (o.tasks) facts.push(o.tasks === 1 ? tx('1 casella da spuntare') : tx('{0} caselle da spuntare', o.tasks));
 		if (o.tables) facts.push(o.tables === 1 ? tx('1 tabella') : tx('{0} tabelle', o.tables));

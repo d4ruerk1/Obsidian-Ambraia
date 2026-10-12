@@ -180,9 +180,9 @@ describe('calendar in the plugin', () => {
 		const el: HTMLElement = view.contentEl;
 		const cell = el.querySelector(`.ambraia-calv-day[data-date="${today}"]`)!;
 		expect(cell.classList.contains('is-today')).toBe(true);
-		expect(cell.querySelector('.is-daily')).not.toBeNull();
-		expect(cell.querySelector('.is-page')).not.toBeNull();
-		expect(cell.querySelector('.is-task')).not.toBeNull();
+		// one task + one dated page: two blue dots (the daily note itself is not counted)
+		expect(cell.querySelectorAll('.ambraia-calv-dot.is-busy').length).toBe(2);
+		expect(cell.querySelector('.ambraia-calv-dot.is-full')).toBeNull();
 		const cells = el.querySelectorAll('.ambraia-calv-day');
 		expect(cells.length % 7).toBe(0);
 		expect(el.querySelector('.ambraia-calv-agenda')!.textContent).toContain('chiamare Luca');

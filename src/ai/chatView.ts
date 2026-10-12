@@ -26,6 +26,8 @@ export interface ChatEntry {
 	error?: boolean;
 	/** Tool calls and notices of an agent turn (kept after the answer is complete). */
 	steps?: { label: string; ok?: boolean; note?: boolean }[];
+	/** Google Search Suggestions of the searches made for this answer (not saved in the note). */
+	searches?: { html?: string; queries: string[] }[];
 }
 
 /** Plain headings: the saved chat reads well for people and for AI tools alike. */
@@ -396,7 +398,7 @@ export class AiChatView extends ItemView {
 		}
 		for (const u of urls) {
 			try {
-				const d = await fetchWeb(u);
+				const d = await fetchWeb(u, this.plugin.ai.webCtx());
 				parts.push(tx('<pagina-web url="{0}" titolo="{1}" tipo="{2}">\n{3}\n</pagina-web>', d.url, d.title.replace(/"/g, "'"), d.kind, clip(d.text, per)));
 				paths.push(u);
 			} catch (e) {
@@ -737,6 +739,7 @@ export class AiChatView extends ItemView {
 						(entry.steps ??= []).push({ label: t, note: true });
 						toolsEl.createDiv({ cls: 'ambraia-ai-tool is-note', text: t });
 					},
+					onSearch: (x) => (entry.searches ??= []).push(x),
 					confirm: (title, preview) => this.confirmCard(toolsEl, title, preview),
 					project: await this.freshProject(),
 				},
@@ -869,6 +872,7 @@ export class AiChatView extends ItemView {
 					};
 				}
 			}
+			for (const g of e.searches ?? []) renderSearchSuggestions(msg, g);
 			this.renderActions(msg, e, idx === this.entries.length - 1);
 		});
 		this.scrollDown();
@@ -990,4 +994,20 @@ export class AiChatView extends ItemView {
 			list.createDiv({ cls: 'ambraia-ai-muted', text: tx('Impossibile calcolare le note correlate.') });
 		}
 	}
+}
+
+/**
+ * Google Search Suggestions, shown as required by the Gemini API terms for "Grounding with Google
+ * Search": Google's own snippet in a sandboxed frame (no scripts, links open in the browser), or
+ * plain links to the searches when the snippet is missing.
+ */
+export function renderSearchSuggestions(parent: HTMLElement, g: { html?: string; queries: string[] }) {
+	const box = parent.createDiv('ambraia-ai-google');
+	if (g.html) {
+		const f = box.createEl('iframe', { cls: 'ambraia-ai-google-frame', attr: { sandbox: 'allow-popups allow-popups-to-escape-sandbox', referrerpolicy: 'no-referrer', title: tx('Suggerimenti di ricerca Google') } });
+		f.srcdoc = `<!doctype html><meta charset="utf-8"><base target="_blank"><style>body{margin:0}</style>${g.html}`;
+		return;
+	}
+	box.createSpan({ text: tx('Ricerche Google: ') });
+	for (const q of g.queries) box.createEl('a', { cls: 'ambraia-chip', text: q, href: 'https://www.google.com/search?q=' + encodeURIComponent(q) });
 }

@@ -1,4 +1,4 @@
-import { ItemView, Keymap, Menu, Notice, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Keymap, Menu, normalizePath, Notice, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import { moment } from '../ui/util';
 import type AmbraiaPlugin from '../main';
 import { availablePath, displayName, getIconFor, prompt, renderIcon, sanitizeFileName } from '../ui/util';
@@ -27,6 +27,11 @@ type Moment = import('../ui/util').Moment;
 type Drag = { kind: 'task'; task: DatedTask } | { kind: 'page'; file: TFile; from: string };
 
 const TIPS_KEY = 'ambraia-calendar-tips';
+
+/** Folder of the notes with the tasks added from the calendar ("Calendario", "Calendar"… by language). */
+export function calendarFolder(): string {
+	return sanitizeFileName(tx('Calendario')) || 'Calendar';
+}
 const OVERDUE_DAYS = 60;
 
 /** Calendar: one month, with daily notes, dated pages and tasks; agenda of the selected day. */
@@ -39,6 +44,7 @@ export class CalendarView extends ItemView {
 	private gridEl!: HTMLElement;
 	private agendaEl!: HTMLElement;
 	private titleBox!: HTMLElement;
+	private headEl!: HTMLElement;
 	/** A change arrived while the panel was hidden: redraw when it is shown again. */
 	private pending = false;
 	private renderSeq = 0;
@@ -68,20 +74,19 @@ export class CalendarView extends ItemView {
 		const c = this.contentEl;
 		c.empty();
 		c.addClass('ambraia-calendar');
-		const head = c.createDiv('ambraia-calv-head');
-		this.titleBox = head.createDiv('ambraia-calv-title');
-		const nav = head.createDiv('ambraia-calv-nav');
-		const btn = (icon: string, label: string, fn: () => void, text?: string) => {
-			const b = nav.createEl('button', { cls: 'ambraia-calv-btn clickable-icon', attr: { 'aria-label': label } });
-			if (text) b.setText(text);
-			else setIcon(b, icon);
+		// the header uses the same columns as the days: ‹ over the first day, month and year in the
+		// middle, › over the last day (and an empty cell over the week numbers, when shown)
+		const head = (this.headEl = c.createDiv('ambraia-calv-head'));
+		head.createDiv('ambraia-calv-head-wk');
+		const btn = (icon: string, label: string, fn: () => void, cls: string) => {
+			const b = head.createEl('button', { cls: `ambraia-calv-btn clickable-icon ${cls}`, attr: { 'aria-label': label } });
+			setIcon(b, icon);
 			b.onclick = fn;
 			return b;
 		};
-		btn('chevron-left', tx('Precedente'), () => this.shift(-1));
-		btn('', tx('Vai a oggi (T)'), () => this.goToday(), tx('Oggi')).addClass('is-text');
-		btn('chevron-right', tx('Successivo'), () => this.shift(1));
-		btn('help-circle', tx('Come si usa il calendario'), () => this.toggleTips(true)).addClass('ambraia-calv-help');
+		btn('chevron-left', tx('Mese precedente'), () => this.shift(-1), 'ambraia-calv-prev');
+		this.titleBox = head.createDiv('ambraia-calv-title');
+		btn('chevron-right', tx('Mese successivo'), () => this.shift(1), 'ambraia-calv-next');
 
 		this.tipsEl = c.createDiv('ambraia-calv-tips');
 		this.toggleTips(false);
@@ -193,19 +198,13 @@ export class CalendarView extends ItemView {
 			i.createSpan(`ambraia-calv-dot ${cls}`);
 			i.createSpan({ text });
 		};
-		item('is-daily', tx('Nota del giorno'));
-		item('is-page', tx('Pagine'));
-		if (this.plugin.settings.calendarShowTasks) {
-			item('is-task', tx('Attività'));
-			item('is-task is-overdue', tx('In ritardo'));
-		}
+		item('is-busy', tx('Un punto per ogni attività o pagina (fino a 3)'));
+		item('is-full', tx('Tre punti rossi: più di 3'));
 		const ul = el.createEl('ul');
 		for (const t of [
-			tx('Clic su un giorno: agenda qui sotto (e apre la nota del giorno, se c’è).'),
-			tx('Doppio clic o Invio: crea e apre la nota del giorno.'),
+			tx('Clic su un giorno per l’agenda, doppio clic per la nota del giorno.'),
 			tx('Trascina attività e pagine su un altro giorno per spostarle.'),
-			tx('Tasto destro su un giorno o su un’attività: altre azioni.'),
-			tx('Frecce per muoverti, T per tornare a oggi.'),
+			tx('Tasto destro per altre azioni · frecce per muoverti · T per oggi.'),
 		])
 			ul.createEl('li', { text: t });
 	}
@@ -232,7 +231,8 @@ export class CalendarView extends ItemView {
 		this.renderTitle();
 		const g = this.gridEl;
 		g.empty();
-		g.toggleClass('has-weeks', s.calendarWeekNumbers || s.weeklyNotes);
+		g.toggleClass('has-weeks', s.weeklyNotes);
+		this.headEl?.toggleClass('has-weeks', s.weeklyNotes);
 		this.renderMonth(weeks, weekStart);
 		this.renderAgenda();
 	}
@@ -252,7 +252,7 @@ export class CalendarView extends ItemView {
 		const s = this.plugin.settings;
 		const g = this.gridEl;
 		// weekly notes need the week numbers: they are where the note opens
-		const showWeeks = s.calendarWeekNumbers || s.weeklyNotes;
+		const showWeeks = s.weeklyNotes;
 		if (showWeeks) g.createDiv({ cls: 'ambraia-calv-dow ambraia-calv-wk-head', text: '#' });
 		for (let i = 0; i < 7; i++) g.createDiv({ cls: 'ambraia-calv-dow', text: moment().day((weekStart + i) % 7).format('dd') });
 		for (const week of weeks) {
@@ -289,10 +289,10 @@ export class CalendarView extends ItemView {
 		num.setText(d.format('D'));
 		const open = info?.tasks.filter((x) => !x.done) ?? [];
 		// dots (narrow) and chips (wide sidebar): CSS shows one or the other
+		// one dot per open task or dated page, up to three; more than three: three red dots
 		const dots = cell.createDiv('ambraia-calv-dots');
-		if (info?.daily) dots.createSpan('ambraia-calv-dot is-daily');
-		if (info?.pages.length) dots.createSpan('ambraia-calv-dot is-page');
-		if (open.length) dots.createSpan(`ambraia-calv-dot is-task${key < today ? ' is-overdue' : ''}`);
+		const count = open.length + (info?.pages.length ?? 0);
+		for (let i = 0; i < Math.min(count, 3); i++) dots.createSpan(`ambraia-calv-dot ${count > 3 ? 'is-full' : 'is-busy'}`);
 		const chips = cell.createDiv('ambraia-calv-chips');
 		const items: [string, string, () => void, Drag | null][] = [
 			...(info?.pages ?? []).map((f) => [getIconFor(this.plugin, f) || 'lucide-file-text', displayName(this.plugin, f), () => void this.plugin.openFile(f), { kind: 'page', file: f, from: key }] as [string, string, () => void, Drag]),
@@ -451,7 +451,7 @@ export class CalendarView extends ItemView {
 		const old = this.contentEl.querySelector('.ambraia-calv-pop');
 		old?.remove();
 		if (old) return; // second click on the title closes the picker
-		const pop = this.contentEl.createDiv('ambraia-calv-pop');
+		const pop = (this.titleBox ?? this.contentEl).createDiv('ambraia-calv-pop');
 		let year = this.cursor.year();
 		let years = false;
 		const close = () => {
@@ -495,6 +495,19 @@ export class CalendarView extends ItemView {
 			};
 			arrow('chevron-right', years ? tx('Anni successivi') : tx('Anno successivo'), 1);
 			const grid = pop.createDiv('ambraia-calv-pop-grid');
+			// compact footer: back to today, and the short guide
+			const foot = pop.createDiv('ambraia-calv-pop-foot');
+			const today = foot.createEl('button', { cls: 'ambraia-calv-pop-today', text: tx('Oggi'), attr: { 'aria-label': tx('Vai a oggi (T)') } });
+			today.onclick = () => {
+				close();
+				this.goToday();
+			};
+			const help = foot.createEl('button', { cls: 'clickable-icon ambraia-calv-pop-help', attr: { 'aria-label': tx('Come si usa il calendario') } });
+			setIcon(help, 'help-circle');
+			help.onclick = () => {
+				close();
+				this.toggleTips(true);
+			};
 			if (years) {
 				for (let y = first; y < first + 12; y++) {
 					const b = grid.createEl('button', { text: String(y) });
@@ -542,15 +555,26 @@ export class CalendarView extends ItemView {
 		await this.plugin.openFile(f, false);
 	}
 
-	/** Adds a task due on the day to that day's daily note (created if needed). */
+	/**
+	 * Adds a task due on the day. It goes to the day's note inside the "Calendar" folder (name in the
+	 * language of Obsidian), created together with the folder when missing.
+	 */
 	async addTask(key: string, text: string) {
 		if (!text.trim()) return;
-		const m = moment(key, 'YYYY-MM-DD');
-		const cfg = dailyConfig(this.app, this.plugin.settings);
-		const f = findPeriodic(this.app, cfg, m) ?? (await createPeriodic(this.app, cfg, m));
+		const f = await this.taskNote(key);
 		await this.app.vault.process(f, (c) => appendLine(c, newTaskLine(text, key)));
 		this.index.invalidate(f.path);
 		this.schedule(30);
+	}
+
+	/** "Calendar/2026-11-05.md": the note that collects the tasks added from the calendar on that day. */
+	private async taskNote(key: string): Promise<TFile> {
+		const folder = calendarFolder();
+		const path = normalizePath(`${folder}/${key}.md`);
+		const found = this.app.vault.getAbstractFileByPath(path);
+		if (found instanceof TFile) return found;
+		if (!this.app.vault.getAbstractFileByPath(folder)) await this.app.vault.createFolder(folder).catch(() => undefined);
+		return this.app.vault.create(path, '');
 	}
 
 	private taskRow(parent: HTMLElement, t: DatedTask, showDate = false) {
@@ -600,8 +624,7 @@ export class CalendarView extends ItemView {
 			b.onclick = fn;
 			return b;
 		};
-		action(info.daily ? 'calendar-check' : 'calendar-plus', info.daily ? tx('Apri la nota del giorno') : tx('Crea la nota del giorno'), (e) => void this.plugin.openPeriodic('day', m, Keymap.isModEvent(e) ? 'tab' : false, true), info.daily ? 'mod-cta' : '').addClass('ambraia-calv-daily');
-		action('file-plus', tx('Nuova pagina'), () => void this.newDatedPage(key));
+		if (info.daily) action('calendar-check', tx('Apri la nota del giorno'), (e) => void this.plugin.openPeriodic('day', m, Keymap.isModEvent(e) ? 'tab' : false, true), 'ambraia-calv-daily');
 		if (s.aiEnabled && this.plugin.ai.ready) action('sparkles', tx('Chiedi all’AI'), () => void this.plugin.askAiAboutDay(key));
 
 		const section = (icon: string, title: string, count: number) => {
@@ -627,14 +650,23 @@ export class CalendarView extends ItemView {
 			for (const t of info.tasks.sort((x, y) => Number(x.done) - Number(y.done))) this.taskRow(sec, t);
 			if (s.calendarShowTasks) {
 				const add = sec.createDiv('ambraia-calv-row ambraia-calv-quick');
-				setIcon(add.createDiv('ambraia-calv-row-icon'), 'plus');
+				const plus = add.createEl('button', { cls: 'clickable-icon ambraia-calv-row-icon ambraia-calv-quick-add', attr: { 'aria-label': tx('Aggiungi un’attività') } });
+				setIcon(plus, 'plus');
 				const input = add.createEl('input', { type: 'text', attr: { placeholder: tx('Aggiungi un’attività…'), 'aria-label': tx('Aggiungi un’attività') } });
+				const submit = () => {
+					const v = input.value;
+					if (!v.trim()) return void input.focus();
+					input.value = '';
+					void this.addTask(key, v);
+				};
+				plus.onclick = (e) => {
+					e.stopPropagation();
+					submit();
+				};
 				input.addEventListener('keydown', (e) => {
-					if (e.key === 'Enter' && input.value.trim()) {
+					if (e.key === 'Enter') {
 						e.preventDefault();
-						const v = input.value;
-						input.value = '';
-						void this.addTask(key, v);
+						submit();
 					}
 				});
 			}
