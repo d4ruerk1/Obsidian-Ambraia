@@ -1,0 +1,11 @@
+{
+	"id": "ambraia",
+	"name": "Ambraia",
+	"version": "1.0.0",
+	"minAppVersion": "1.13.0",
+	"description": "Add page icons and covers, databases, a calendar, templates, slash and @ menus, optional end-to-end encrypted multi-cloud sync, encrypted share links and an optional AI assistant (off by default).",
+	"author": "d4ruerk1",
+	"authorUrl": "https://github.com/d4ruerk1",
+	"fundingUrl": "https://ko-fi.com/d4ruerk1",
+	"isDesktopOnly": false
+}

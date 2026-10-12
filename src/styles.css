@@ -1,0 +1,1361 @@
+/* =========================================================================
+   Ambraia — pages, databases and a refined look for Obsidian
+   ========================================================================= */
+
+/* ---------- palette (always available: used by coloured text and pills) */
+body {
+	--ob-gray: #787774; --ob-brown: #9f6b53; --ob-orange: #d9730d; --ob-yellow: #cb912f; --ob-green: #448361;
+	--ob-blue: #337ea9; --ob-purple: #9065b0; --ob-pink: #c14c8a; --ob-red: #d44c47;
+	--ob-gray-bg: #f1f1ef; --ob-brown-bg: #f4eeee; --ob-orange-bg: #fbecdd; --ob-yellow-bg: #fbf3db; --ob-green-bg: #edf3ec;
+	--ob-blue-bg: #e7f3f8; --ob-purple-bg: #f4f0f7; --ob-pink-bg: #f9eef3; --ob-red-bg: #fdebec;
+	--ob-hover: rgba(55, 53, 47, 0.08);
+	--ob-border: rgba(55, 53, 47, 0.12);
+	--ob-muted: #918f8d;
+	--ob-shadow: rgba(15, 15, 15, 0.05) 0 0 0 1px, rgba(15, 15, 15, 0.1) 0 3px 6px, rgba(15, 15, 15, 0.2) 0 9px 24px;
+	--ambraia-banner-height: 220px;
+}
+body.theme-dark {
+	--ob-gray: #9b9b9b; --ob-brown: #ba856f; --ob-orange: #c77d48; --ob-yellow: #ca9849; --ob-green: #529e72;
+	--ob-blue: #5e87c9; --ob-purple: #9d68d3; --ob-pink: #d15796; --ob-red: #df5452;
+	--ob-gray-bg: #2f2f2f; --ob-brown-bg: #4a3228; --ob-orange-bg: #5c3b23; --ob-yellow-bg: #564328; --ob-green-bg: #243d30;
+	--ob-blue-bg: #143a4e; --ob-purple-bg: #3c2d49; --ob-pink-bg: #4e2c3c; --ob-red-bg: #522e2a;
+	--ob-hover: rgba(255, 255, 255, 0.055);
+	--ob-border: rgba(255, 255, 255, 0.094);
+	--ob-muted: #838383;
+	--ob-shadow: rgba(0, 0, 0, 0.3) 0 0 0 1px, rgba(0, 0, 0, 0.4) 0 3px 6px, rgba(0, 0, 0, 0.5) 0 9px 24px;
+}
+
+.ob-c-gray { color: var(--ob-gray); } .ob-c-brown { color: var(--ob-brown); } .ob-c-orange { color: var(--ob-orange); }
+.ob-c-yellow { color: var(--ob-yellow); } .ob-c-green { color: var(--ob-green); } .ob-c-blue { color: var(--ob-blue); }
+.ob-c-purple { color: var(--ob-purple); } .ob-c-pink { color: var(--ob-pink); } .ob-c-red { color: var(--ob-red); }
+mark[class^='ob-bg-'], .ob-bg-gray, .ob-bg-brown, .ob-bg-orange, .ob-bg-yellow, .ob-bg-green, .ob-bg-blue, .ob-bg-purple, .ob-bg-pink, .ob-bg-red {
+	color: inherit; border-radius: 3px; padding: 0 2px;
+}
+.ob-bg-gray { background: var(--ob-gray-bg); } .ob-bg-brown { background: var(--ob-brown-bg); } .ob-bg-orange { background: var(--ob-orange-bg); }
+.ob-bg-yellow { background: var(--ob-yellow-bg); } .ob-bg-green { background: var(--ob-green-bg); } .ob-bg-blue { background: var(--ob-blue-bg); }
+.ob-bg-purple { background: var(--ob-purple-bg); } .ob-bg-pink { background: var(--ob-pink-bg); } .ob-bg-red { background: var(--ob-red-bg); }
+
+.ambraia-hidden { display: none !important; }
+.ambraia-spacer { flex: 1 1 auto; }
+.ambraia-empty { color: var(--ob-muted); padding: 12px; text-align: center; font-size: 0.9em; }
+
+/* ---------- Ambraia theme (typography and colours) --------------------- */
+body.ambraia-theme {
+	--font-text-theme: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+	--font-interface-theme: var(--font-text-theme);
+	--h1-size: 1.875em; --h2-size: 1.5em; --h3-size: 1.25em; --h4-size: 1.1em; --h5-size: 1em; --h6-size: 1em;
+	--h1-weight: 700; --h2-weight: 600; --h3-weight: 600; --h4-weight: 600;
+	--h1-line-height: 1.3; --h2-line-height: 1.3; --h3-line-height: 1.3;
+	--inline-title-size: 2.5em; --inline-title-weight: 700; --inline-title-line-height: 1.2;
+	--line-height-normal: 1.5;
+	--p-spacing: 0.5em;
+	--file-line-width: 708px;
+	--radius-s: 4px; --radius-m: 6px; --radius-l: 10px;
+	--code-background: rgba(135, 131, 120, 0.15);
+	--code-normal: #eb5757;
+	--blockquote-border-thickness: 3px;
+	--blockquote-border-color: currentColor;
+	--checkbox-radius: 3px;
+	--checkbox-color: #2383e2;
+	--checkbox-color-hover: #0077d4;
+	--link-color: inherit;
+	--link-external-color: inherit;
+	--link-decoration: underline;
+	--table-border-color: var(--ob-border);
+	--table-header-background: transparent;
+	--tag-background: var(--ob-gray-bg);
+	--tag-color: inherit;
+	--tag-radius: 3px;
+	--tag-padding-x: 6px;
+	--interactive-accent: #2383e2;
+	--text-accent: #2383e2;
+}
+body.ambraia-theme.theme-light {
+	--background-primary: #ffffff;
+	--background-secondary: #f7f7f5;
+	--background-secondary-alt: #f7f7f5;
+	--background-modifier-hover: var(--ob-hover);
+	--background-modifier-border: rgba(55, 53, 47, 0.09);
+	--text-normal: #37352f;
+	/* opaque colours: semi-transparent text makes colour emoji look faded */
+	--text-muted: #7d7c78;
+	--text-faint: #a5a4a1;
+	--titlebar-background: #f7f7f5;
+	--titlebar-background-focused: #f7f7f5;
+	--tab-container-background: #f7f7f5;
+	--nav-item-background-active: rgba(55, 53, 47, 0.08);
+}
+body.ambraia-theme.theme-dark {
+	--background-primary: #191919;
+	--background-primary-alt: #202020;
+	--background-secondary: #202020;
+	--background-secondary-alt: #202020;
+	--background-modifier-hover: var(--ob-hover);
+	--background-modifier-border: rgba(255, 255, 255, 0.094);
+	--text-normal: #d4d4d4;
+	--text-muted: #979797;
+	--text-faint: #6b6b6b;
+	--titlebar-background: #202020;
+	--titlebar-background-focused: #202020;
+	--tab-container-background: #202020;
+	--code-normal: #ff7369;
+	--nav-item-background-active: rgba(255, 255, 255, 0.055);
+}
+/* Fonts: only generic families and fonts already installed with the operating system are named.
+   Ambraia bundles no font files and downloads none (see README → Fonts). */
+body.ambraia-font-standard { --font-text-theme: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'; }
+body.ambraia-font-serif { --font-text-theme: ui-serif, Georgia, Cambria, 'Times New Roman', serif; }
+body.ambraia-font-mono { --font-text-theme: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; }
+body.ambraia-width-wide { --file-line-width: 960px; }
+body.ambraia-width-full { --file-line-width: 100%; }
+
+body.ambraia-theme .markdown-rendered h1, body.ambraia-theme .HyperMD-header-1 { margin-top: 1.4em; }
+body.ambraia-theme .markdown-rendered h2, body.ambraia-theme .HyperMD-header-2 { margin-top: 1.1em; }
+body.ambraia-theme .markdown-rendered blockquote { padding: 0 14px; font-style: normal; }
+body.ambraia-theme .markdown-rendered code, body.ambraia-theme .cm-s-obsidian span.cm-inline-code { border-radius: 4px; padding: 0.2em 0.4em; font-size: 85%; }
+body.ambraia-theme .markdown-rendered pre, body.ambraia-theme .HyperMD-codeblock { background: var(--ob-gray-bg); }
+body.ambraia-theme .markdown-rendered hr { border-color: var(--ob-border); }
+body.ambraia-theme .markdown-rendered table { border-collapse: collapse; }
+body.ambraia-theme .markdown-rendered th { font-weight: 500; color: var(--text-muted); }
+body.ambraia-theme .callout { border-radius: 4px; border: none; padding: 16px 16px 16px 12px; mix-blend-mode: normal; background: var(--ob-gray-bg); }
+body.ambraia-theme .callout[data-callout='note'], body.ambraia-theme .callout[data-callout='info'] { background: var(--ob-blue-bg); }
+body.ambraia-theme .callout[data-callout='tip'], body.ambraia-theme .callout[data-callout='success'] { background: var(--ob-green-bg); }
+body.ambraia-theme .callout[data-callout='warning'] { background: var(--ob-yellow-bg); }
+body.ambraia-theme .callout[data-callout='danger'], body.ambraia-theme .callout[data-callout='bug'], body.ambraia-theme .callout[data-callout='failure'] { background: var(--ob-red-bg); }
+body.ambraia-theme .callout[data-callout='quote'], body.ambraia-theme .callout[data-callout='example'] { background: var(--ob-purple-bg); }
+body.ambraia-theme .callout-title { color: var(--text-normal); }
+body.ambraia-theme .nav-file-title, body.ambraia-theme .nav-folder-title, body.ambraia-theme .tree-item-self { border-radius: 4px; }
+body.ambraia-theme .workspace-tab-header { border-radius: 6px; }
+body.ambraia-theme .menu, body.ambraia-theme .suggestion-container { box-shadow: var(--ob-shadow); border-radius: 8px; border: none; }
+body.ambraia-theme .modal { border-radius: 12px; box-shadow: var(--ob-shadow); }
+body.ambraia-theme .inline-title { margin-bottom: 0.3em; }
+body.ambraia-theme .metadata-container { --metadata-label-font-size: 14px; }
+body.ambraia-theme .task-list-item-checkbox { border-radius: 3px; }
+body.ambraia-theme .markdown-rendered .task-list-item.is-checked, body.ambraia-theme .HyperMD-task-line[data-task='x'] { color: var(--text-faint); }
+
+/* =========================================================================
+   Nuova interfaccia: a calm, modern workspace on top of Obsidian.
+   Only colours, spacing, radii and opacity change: every control stays where
+   Obsidian puts it (nothing jumps, hides for good or leaves gaps), so plugins,
+   themes and mobile layouts keep working. Turn it off to get Obsidian's look back.
+   ========================================================================= */
+body.ambraia-minimal {
+	--obn-radius: 8px;
+	--obn-radius-s: 6px;
+	--obn-ease: 120ms ease;
+	--obn-surface: var(--background-primary);
+	--obn-side: var(--background-secondary);
+	--obn-line: var(--ob-border);
+	--obn-hover: var(--ob-hover);
+	--obn-active: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+	--obn-ring: 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+	--obn-float: 0 1px 2px rgba(15, 15, 15, 0.06), 0 8px 24px rgba(15, 15, 15, 0.1);
+	--tab-container-background: var(--obn-surface);
+	--titlebar-background: var(--obn-side);
+	--titlebar-background-focused: var(--obn-side);
+	--tab-stacked-header-width: 36px;
+	--divider-color: var(--obn-line);
+	--divider-width: 1px;
+	--tab-outline-color: transparent;
+	--tab-divider-color: transparent;
+	--ribbon-background: var(--obn-side);
+	--ribbon-background-collapsed: var(--obn-surface);
+	--status-bar-border-width: 0;
+	--scrollbar-width: 8px;
+	--input-radius: var(--obn-radius-s);
+	--button-radius: var(--obn-radius-s);
+	--modal-radius: 14px;
+	--menu-radius: 10px;
+	--nav-item-padding: 4px 8px 4px 24px;
+	--nav-item-border-radius: var(--obn-radius-s);
+	--nav-item-background-active: var(--obn-active);
+	--nav-item-color-active: var(--text-normal);
+	--nav-item-weight-active: 500;
+	--icon-opacity: 0.7;
+	--icon-opacity-hover: 1;
+}
+body.ambraia-minimal.theme-dark {
+	--obn-float: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.45);
+	--obn-active: color-mix(in srgb, var(--interactive-accent) 20%, transparent);
+}
+
+/* ---- sidebars: soft surface, one hairline towards the page */
+body.ambraia-minimal .workspace-split.mod-left-split, body.ambraia-minimal .workspace-split.mod-right-split { background: var(--obn-side); border: none; }
+body.ambraia-minimal .workspace-split.mod-left-split > .workspace-leaf-resize-handle,
+body.ambraia-minimal .workspace-split.mod-right-split > .workspace-leaf-resize-handle { border-color: var(--obn-line); transition: border-color var(--obn-ease); }
+body.ambraia-minimal .workspace-leaf-resize-handle:hover { border-color: var(--interactive-accent) !important; }
+body.ambraia-minimal .workspace-split.mod-root .workspace-leaf-resize-handle { border-color: var(--obn-line); }
+body.ambraia-minimal .mod-left-split .workspace-tab-header-container, body.ambraia-minimal .mod-right-split .workspace-tab-header-container { background: var(--obn-side); border-bottom: none; }
+body.ambraia-minimal .workspace-ribbon { border: none; background: var(--obn-side); }
+body.ambraia-minimal .workspace-ribbon.mod-left { border-inline-end: 1px solid var(--obn-line); }
+body.ambraia-minimal .side-dock-ribbon-action { border-radius: var(--obn-radius-s); color: var(--text-muted); transition: background var(--obn-ease), color var(--obn-ease); }
+body.ambraia-minimal .side-dock-ribbon-action:hover { background: var(--obn-hover); color: var(--text-normal); }
+
+/* ---- file explorer: airy rows, rounded selection, quiet icons */
+body.ambraia-minimal .nav-header { padding: 8px 8px 6px; }
+body.ambraia-minimal .nav-buttons-container { gap: 2px; justify-content: flex-start; padding: 0 2px; }
+body.ambraia-minimal .nav-buttons-container .clickable-icon { border-radius: var(--obn-radius-s); padding: 5px; color: var(--text-muted); transition: background var(--obn-ease), color var(--obn-ease); }
+body.ambraia-minimal .nav-buttons-container .clickable-icon:hover { background: var(--obn-hover); color: var(--text-normal); }
+body.ambraia-minimal .nav-buttons-container .clickable-icon.is-active { background: var(--obn-active); color: var(--interactive-accent); }
+body.ambraia-minimal .nav-files-container { padding: 2px 6px 24px; }
+body.ambraia-minimal .tree-item-self { border-radius: var(--obn-radius-s); padding-top: 4px; padding-bottom: 4px; margin-bottom: 1px; transition: background var(--obn-ease); }
+body.ambraia-minimal .tree-item-self:hover { background: var(--obn-hover); }
+body.ambraia-minimal .tree-item-self.is-active, body.ambraia-minimal .tree-item-self.has-focus.is-active { background: var(--obn-active); font-weight: 500; }
+body.ambraia-minimal .tree-item-self.has-focus:not(.is-active) { box-shadow: 0 0 0 1px var(--obn-line); }
+body.ambraia-minimal .tree-item-icon.collapse-icon { color: var(--text-faint); }
+body.ambraia-minimal .tree-item-self:hover .tree-item-icon.collapse-icon { color: var(--text-muted); }
+body.ambraia-minimal .nav-folder-title-content { font-weight: 500; }
+body.ambraia-minimal .tree-item-children { border-inline-start-color: var(--obn-line); }
+body.ambraia-minimal .nav-file-tag { border-radius: 4px; background: var(--obn-hover); font-weight: 500; }
+
+/* ---- tabs: flat bar on the page, active tab as a soft card */
+body.ambraia-minimal .mod-root .workspace-tab-header-container { background: var(--obn-surface); border-bottom: 1px solid var(--obn-line); padding-inline: 6px; }
+body.ambraia-minimal .workspace-tab-header::before, body.ambraia-minimal .workspace-tab-header::after { display: none; }
+body.ambraia-minimal .mod-root .workspace-tab-header { border-radius: var(--obn-radius) var(--obn-radius) 0 0; margin-top: 4px; transition: background var(--obn-ease); }
+body.ambraia-minimal .mod-root .workspace-tab-header:hover:not(.is-active) { background: var(--obn-hover); }
+body.ambraia-minimal .mod-root .workspace-tab-header.is-active { background: var(--obn-surface); box-shadow: 0 0 0 1px var(--obn-line), 0 2px 0 -1px var(--obn-surface); }
+body.ambraia-minimal .workspace-tab-header-inner { padding: 0 10px; }
+body.ambraia-minimal .workspace-tab-header:not(.is-active) .workspace-tab-header-inner-title { color: var(--text-muted); }
+body.ambraia-minimal .workspace-tab-header-inner-close-button { opacity: 0; transition: opacity var(--obn-ease); border-radius: 4px; }
+body.ambraia-minimal .workspace-tab-header:hover .workspace-tab-header-inner-close-button, body.ambraia-minimal .workspace-tab-header.is-active .workspace-tab-header-inner-close-button { opacity: 0.7; }
+body.ambraia-minimal .mod-left-split .workspace-tab-header, body.ambraia-minimal .mod-right-split .workspace-tab-header { border-radius: var(--obn-radius-s); }
+body.ambraia-minimal .mod-left-split .workspace-tab-header.is-active, body.ambraia-minimal .mod-right-split .workspace-tab-header.is-active { background: var(--obn-hover); box-shadow: none; }
+body.ambraia-minimal .workspace-tab-header-new-tab, body.ambraia-minimal .workspace-tab-header-tab-list, body.ambraia-minimal .sidebar-toggle-button { opacity: 0.6; transition: opacity var(--obn-ease); }
+body.ambraia-minimal .workspace-tab-header-container:hover .workspace-tab-header-new-tab,
+body.ambraia-minimal .workspace-tab-header-container:hover .workspace-tab-header-tab-list,
+body.ambraia-minimal .sidebar-toggle-button:hover { opacity: 1; }
+
+/* ---- page header: breadcrumb-like title, actions fade in on hover */
+body.ambraia-minimal .view-header { border-bottom: none; background: var(--obn-surface); }
+body.ambraia-minimal .view-header-title { font-size: var(--font-ui-small); font-weight: 450; color: var(--text-muted); }
+body.ambraia-minimal .view-header-title-parent { color: var(--text-faint); }
+body.ambraia-minimal .view-header .view-actions .clickable-icon, body.ambraia-minimal .view-header-nav-buttons .clickable-icon { opacity: 0.45; border-radius: var(--obn-radius-s); transition: opacity var(--obn-ease), background var(--obn-ease); }
+body.ambraia-minimal .view-header:hover .view-actions .clickable-icon,
+body.ambraia-minimal .view-header:hover .view-header-nav-buttons .clickable-icon,
+body.ambraia-minimal .view-header .clickable-icon:focus-visible { opacity: 1; }
+
+/* ---- page: generous margins and a large title */
+body.ambraia-minimal .markdown-source-view.mod-cm6 .cm-scroller, body.ambraia-minimal .markdown-preview-view { padding-top: 28px; }
+body.ambraia-minimal .inline-title { margin-top: 0.4em; letter-spacing: -0.01em; }
+body.ambraia-minimal .markdown-rendered h1, body.ambraia-minimal .markdown-rendered h2, body.ambraia-minimal .HyperMD-header-1, body.ambraia-minimal .HyperMD-header-2 { letter-spacing: -0.01em; }
+body.ambraia-minimal ::selection { background: color-mix(in srgb, var(--interactive-accent) 22%, transparent); }
+
+/* ---- floating surfaces: menus, suggestions, palette, notices, modals */
+body.ambraia-minimal .menu { border-radius: var(--menu-radius); border: 1px solid var(--obn-line); box-shadow: var(--obn-float); padding: 5px; backdrop-filter: saturate(1.2); }
+body.ambraia-minimal .menu-item { border-radius: var(--obn-radius-s); padding: 5px 9px; transition: background var(--obn-ease); }
+body.ambraia-minimal .menu-item.selected:not(.is-disabled):not(.is-label), body.ambraia-minimal .menu-item:hover:not(.is-disabled):not(.is-label) { background: var(--obn-hover); }
+body.ambraia-minimal .menu-item-icon { color: var(--text-muted); }
+body.ambraia-minimal .menu-separator { margin: 5px -5px; border-color: var(--obn-line); }
+body.ambraia-minimal .suggestion-container, body.ambraia-minimal .prompt { border-radius: 12px; border: 1px solid var(--obn-line); box-shadow: var(--obn-float); }
+body.ambraia-minimal .suggestion-item { border-radius: var(--obn-radius-s); margin: 0 4px; }
+body.ambraia-minimal .suggestion-item.is-selected { background: var(--obn-active); }
+body.ambraia-minimal .prompt-input-container { border-bottom: 1px solid var(--obn-line); }
+body.ambraia-minimal .prompt-input { font-size: 16px; padding: 14px 16px !important; }
+body.ambraia-minimal .notice { border-radius: 10px; box-shadow: var(--obn-float); border: 1px solid var(--obn-line); }
+body.ambraia-minimal .modal { border-radius: var(--modal-radius); border: 1px solid var(--obn-line); box-shadow: var(--obn-float); }
+body.ambraia-minimal .modal-bg { background: rgba(15, 15, 15, 0.35); }
+body.ambraia-minimal .modal-close-button { border-radius: var(--obn-radius-s); }
+body.ambraia-minimal .tooltip { border-radius: 6px; box-shadow: var(--obn-float); }
+
+/* ---- controls */
+body.ambraia-minimal .setting-item-control button:not(.clickable-icon), body.ambraia-minimal .modal-button-container button { border-radius: var(--button-radius); box-shadow: 0 0 0 1px var(--obn-line); transition: background var(--obn-ease), box-shadow var(--obn-ease); }
+body.ambraia-minimal button.mod-cta { box-shadow: 0 1px 2px rgba(15, 15, 15, 0.12); }
+body.ambraia-minimal input[type='text'], body.ambraia-minimal input[type='search'], body.ambraia-minimal input[type='password'], body.ambraia-minimal input[type='number'], body.ambraia-minimal input[type='email'], body.ambraia-minimal input[type='url'], body.ambraia-minimal textarea, body.ambraia-minimal select, body.ambraia-minimal .dropdown {
+	border-radius: var(--input-radius);
+	transition: box-shadow var(--obn-ease), border-color var(--obn-ease);
+}
+body.ambraia-minimal input:focus, body.ambraia-minimal textarea:focus, body.ambraia-minimal select:focus { box-shadow: var(--obn-ring); border-color: var(--interactive-accent); }
+body.ambraia-minimal .checkbox-container { transition: background var(--obn-ease); }
+body.ambraia-minimal .clickable-icon { border-radius: var(--obn-radius-s); }
+
+/* ---- settings window */
+body.ambraia-minimal .vertical-tab-header { background: var(--obn-side); padding: 12px 8px; }
+body.ambraia-minimal .vertical-tab-nav-item { border-radius: var(--obn-radius-s); padding: 6px 10px; margin-bottom: 1px; transition: background var(--obn-ease); }
+body.ambraia-minimal .vertical-tab-nav-item.is-active { background: var(--obn-active); color: var(--text-normal); font-weight: 500; }
+body.ambraia-minimal .vertical-tab-header-group-title { font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-faint); }
+body.ambraia-minimal .setting-item { border-top-color: var(--obn-line); }
+
+/* ---- status bar: a small floating pill, quiet until needed */
+body.ambraia-minimal:not(.is-mobile) .status-bar { border: 1px solid var(--obn-line); border-radius: 10px 0 0 0; background: color-mix(in srgb, var(--obn-surface) 88%, transparent); backdrop-filter: blur(8px); opacity: 0.75; transition: opacity var(--obn-ease); }
+body.ambraia-minimal .status-bar:hover { opacity: 1; }
+body.ambraia-minimal .status-bar-item.mod-clickable { border-radius: var(--obn-radius-s); }
+
+/* ---- thin, discreet scrollbars */
+body.ambraia-minimal ::-webkit-scrollbar-thumb { border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+body.ambraia-minimal ::-webkit-scrollbar-thumb:hover { background-color: var(--text-faint); }
+
+/* ---- mobile: same palette, Obsidian's own sizes */
+body.ambraia-minimal.is-mobile .tree-item-self { padding-top: 6px; padding-bottom: 6px; }
+body.ambraia-minimal.is-mobile .mod-root .workspace-tab-header-container { border-bottom: none; }
+
+@media (prefers-reduced-motion: reduce) {
+	body.ambraia-minimal * { transition: none !important; }
+}
+
+/* image alignment (stored as words in the alt text: center / right) */
+.markdown-rendered img[alt~='center'], .image-embed[alt~='center'] img, .internal-embed[alt~='center'] img { display: block; margin-left: auto; margin-right: auto; }
+.markdown-rendered img[alt~='right'], .image-embed[alt~='right'] img, .internal-embed[alt~='right'] img { display: block; margin-left: auto; margin-right: 0; }
+.image-embed[alt~='center'], .image-embed[alt~='right'] { display: block; }
+
+/* ---------- page header: banner + icon -------------------------------- */
+.ambraia-header { position: relative; width: 100%; margin-bottom: 4px; user-select: none; }
+.markdown-source-view .cm-sizer > .ambraia-header, .markdown-preview-sizer .ambraia-header { max-width: none; }
+.markdown-source-view.mod-cm6 .cm-scroller, .markdown-preview-view { container-type: inline-size; }
+.ambraia-banner {
+	position: relative; height: var(--ambraia-banner-height); overflow: hidden; border-radius: 4px;
+	width: 100cqw; max-width: none; margin-left: calc((100% - 100cqw) / 2);
+	background-size: cover; background-position: center;
+}
+.ambraia-banner img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+.ambraia-banner.is-broken { background: var(--ob-gray-bg); }
+.ambraia-banner.is-broken::after { content: attr(data-msg); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--ob-muted); }
+.ambraia-banner-controls { position: absolute; right: 12px; bottom: 10px; display: flex; gap: 0; opacity: 0; transition: opacity 0.15s; border-radius: 4px; overflow: hidden; box-shadow: var(--ob-shadow); }
+.ambraia-banner:hover .ambraia-banner-controls, .ambraia-header.is-repositioning .ambraia-banner-controls { opacity: 1; }
+.ambraia-banner-controls button { background: var(--background-primary); color: var(--text-muted); border-radius: 0; box-shadow: none; font-size: 12px; height: 26px; padding: 0 9px; }
+.ambraia-banner-controls button:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.ambraia-header.is-repositioning .ambraia-banner { cursor: grab; }
+.ambraia-header.is-repositioning .ambraia-banner img { pointer-events: auto; }
+.ambraia-banner-hint { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.55); color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 13px; pointer-events: none; }
+.ambraia-header-row { display: flex; align-items: flex-end; min-height: 8px; }
+.ambraia-page-icon { font-size: 78px; line-height: 1.1; width: 1.1em; height: 1.1em; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 6px; margin-top: 12px; }
+.ambraia-page-icon:hover { background: var(--ob-hover); }
+.ambraia-page-icon svg { width: 0.8em; height: 0.8em; stroke-width: 1.5; }
+.ambraia-page-icon img { width: 0.9em; height: 0.9em; object-fit: cover; border-radius: 6px; }
+.ambraia-header.has-banner .ambraia-page-icon { margin-top: -42px; position: relative; z-index: 1; }
+.ambraia-header-actions { display: flex; gap: 2px; margin: 8px 0 0 -6px; opacity: 0; transition: opacity 0.15s; min-height: 28px; }
+.ambraia-header:hover .ambraia-header-actions, .ambraia-header:focus-within .ambraia-header-actions { opacity: 1; }
+.is-mobile .ambraia-header-actions { opacity: 0.7; }
+.ambraia-header-action { padding: 3px 8px; border-radius: 4px; color: var(--ob-muted); font-size: 14px; cursor: pointer; white-space: nowrap; }
+.ambraia-header-action:hover { background: var(--ob-hover); color: var(--text-normal); }
+
+/* ---------- file explorer -------------------------------------------- */
+.ambraia-explorer-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; margin-right: 4px; flex-shrink: 0; font-size: 14px; }
+.ambraia-explorer-icon svg { width: 14px; height: 14px; }
+.ambraia-explorer-icon img { width: 16px; height: 16px; object-fit: cover; border-radius: 3px; }
+.ambraia-folder-note-hidden { display: none !important; }
+.ambraia-has-folder-note .nav-folder-title-content { text-decoration: underline dotted var(--text-faint); text-underline-offset: 3px; }
+
+/* ---------- floating toolbars (selection / image) --------------------- */
+.ambraia-floating-bar {
+	position: fixed; z-index: var(--layer-tooltip, 60); display: flex; align-items: center; gap: 1px; padding: 3px;
+	background: var(--background-primary); border-radius: 8px; box-shadow: var(--ob-shadow);
+	opacity: 0; transform: translateY(4px); transition: opacity 0.12s, transform 0.12s; max-width: calc(100vw - 12px); overflow-x: auto; scrollbar-width: none;
+}
+.ambraia-floating-bar::-webkit-scrollbar { display: none; }
+.ambraia-floating-bar.is-shown { opacity: 1; transform: none; }
+.ambraia-bar-btn {
+	display: inline-flex; align-items: center; gap: 4px; height: 28px; min-width: 28px; padding: 0 6px; border-radius: 5px;
+	background: transparent !important; box-shadow: none !important; border: none; color: var(--text-normal); font-size: 13px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.ambraia-bar-btn:hover { background: var(--ob-hover) !important; }
+.ambraia-bar-btn.is-active { color: #2383e2; background: rgba(35, 131, 226, 0.1) !important; }
+.ambraia-bar-btn.mod-warning { color: var(--ob-red); }
+.ambraia-bar-btn-icon { display: flex; }
+.ambraia-bar-btn-icon svg { width: 16px; height: 16px; }
+.ambraia-bar-caret { display: flex; color: var(--text-faint); margin-left: -2px; }
+.ambraia-bar-caret svg { width: 12px; height: 12px; }
+.ambraia-bar-sep { width: 1px; align-self: stretch; margin: 4px 3px; background: var(--ob-border); flex-shrink: 0; }
+.ambraia-bar-info { font-size: 12px; color: var(--text-faint); padding: 0 6px; white-space: nowrap; }
+.ambraia-floating-panel {
+	position: fixed; z-index: calc(var(--layer-tooltip, 60) + 1); background: var(--background-primary); border-radius: 8px; box-shadow: var(--ob-shadow);
+	padding: 6px; min-width: 180px; max-height: 70vh; overflow-y: auto; font-size: 14px;
+}
+.ambraia-floating-panel .ambraia-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.ambraia-floating-panel .ambraia-row:hover, .ambraia-floating-panel .ambraia-row.is-active { background: var(--ob-hover); }
+.ambraia-floating-panel .ambraia-row svg { width: 16px; height: 16px; color: var(--text-muted); }
+.ambraia-floating-panel input { width: 100%; }
+.ambraia-panel-label { font-size: 11px; font-weight: 500; color: var(--text-faint); padding: 6px 6px 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+.ambraia-color-grid { display: grid; grid-template-columns: repeat(5, 28px); gap: 4px; padding: 2px 4px 6px; }
+.ambraia-color-swatch { width: 28px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: 600; cursor: pointer; border: 1px solid var(--ob-border); }
+.ambraia-color-swatch:hover { box-shadow: 0 0 0 2px rgba(35, 131, 226, 0.5); }
+.ambraia-image-selected { outline: 2px solid #2383e2; outline-offset: 2px; border-radius: 2px; }
+
+/* ---------- slash menu ------------------------------------------------- */
+.ambraia-slash-item { display: flex !important; align-items: center; gap: 10px; padding: 4px 8px !important; }
+.ambraia-slash-icon { width: 40px; height: 40px; flex-shrink: 0; border-radius: 4px; border: 1px solid var(--ob-border); background: var(--background-primary); display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 20px; }
+.ambraia-slash-icon svg { width: 20px; height: 20px; }
+.ambraia-slash-text { min-width: 0; }
+.ambraia-slash-title { font-size: 14px; color: var(--text-normal); }
+.ambraia-slash-desc { font-size: 12px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- pickers / modals ------------------------------------------ */
+.ambraia-picker { width: min(480px, 95vw); }
+.ambraia-picker-tabs { display: flex; align-items: center; gap: 2px; border-bottom: 1px solid var(--ob-border); margin-bottom: 8px; }
+.ambraia-tab { padding: 6px 8px; font-size: 14px; color: var(--text-muted); cursor: pointer; border-radius: 4px 4px 0 0; border-bottom: 2px solid transparent; }
+.ambraia-tab:hover { background: var(--ob-hover); }
+.ambraia-tab.is-active { color: var(--text-normal); border-bottom-color: var(--text-normal); }
+.ambraia-picker-search { width: 100%; margin-bottom: 8px; }
+.ambraia-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 2px; max-height: 320px; overflow-y: auto; }
+.ambraia-picker-item { height: 36px; display: flex; align-items: center; justify-content: center; font-size: 24px; border-radius: 4px; cursor: pointer; }
+.ambraia-picker-item:hover, .ambraia-picker-item.is-active { background: var(--ob-hover); }
+.ambraia-picker-grid.is-icons .ambraia-picker-item svg { width: 20px; height: 20px; color: var(--text-muted); }
+.ambraia-picker-body { max-height: 420px; overflow-y: auto; }
+.ambraia-picker-label { font-size: 12px; color: var(--text-faint); margin: 8px 0 6px; }
+.ambraia-cover-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+.ambraia-banner-picker .ambraia-picker-body { max-height: min(62vh, 560px); overflow-y: auto; padding-right: 4px; }
+.ambraia-cover-grid.is-photos .ambraia-cover-swatch { height: 56px; background-color: var(--background-modifier-hover); }
+.ambraia-cover-swatch.is-loading { opacity: 0.5; cursor: progress; animation: ambraia-pulse 1s ease-in-out infinite alternate; }
+@keyframes ambraia-pulse { from { opacity: 0.35; } to { opacity: 0.75; } }
+.ambraia-cover-swatch:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+.ambraia-picker-note { font-size: 11px; color: var(--text-faint); margin: 14px 0 4px; line-height: 1.4; }
+/* file explorer toolbar settings */
+.ambraia-nav-row .setting-item-name { display: flex; align-items: center; gap: 8px; }
+.ambraia-nav-row-icon { display: inline-flex; color: var(--text-muted); }
+.ambraia-nav-row-icon svg { width: 16px; height: 16px; }
+.ambraia-cover-grid.is-images { grid-template-columns: repeat(3, 1fr); }
+.ambraia-cover-swatch { height: 64px; border-radius: 4px; cursor: pointer; background-size: cover !important; background-position: center !important; overflow: hidden; }
+.ambraia-cover-swatch img { width: 100%; height: 100%; object-fit: cover; }
+.ambraia-cover-swatch:hover { opacity: 0.85; box-shadow: 0 0 0 2px rgba(35, 131, 226, 0.6); }
+.ambraia-dropzone { border: 2px dashed var(--ob-border); border-radius: 8px; padding: 24px; text-align: center; color: var(--text-muted); cursor: pointer; margin: 8px 0; }
+.ambraia-dropzone.is-over { border-color: #2383e2; background: rgba(35, 131, 226, 0.06); }
+.ambraia-prompt-input { width: 100%; }
+textarea.ambraia-prompt-input { min-height: 120px; font-family: var(--font-text); }
+
+/* ---------- sync -------------------------------------------------------- */
+.ambraia-sync-status { display: inline-flex; align-items: center; gap: 3px; }
+.ambraia-sync-icon { display: flex; }
+.ambraia-sync-icon svg { width: 14px; height: 14px; }
+.ambraia-sync-status[data-status='error'] .ambraia-sync-icon, .ambraia-sync-status[data-status='auth'] .ambraia-sync-icon { color: var(--ob-red); }
+.ambraia-sync-status[data-status='offline'] .ambraia-sync-icon, .ambraia-sync-status[data-status='paused'] .ambraia-sync-icon, .ambraia-sync-status[data-status='locked'] .ambraia-sync-icon { color: var(--ob-orange); }
+.ambraia-sync-count { font-size: 11px; font-variant-numeric: tabular-nums; }
+@keyframes ambraia-spin { to { transform: rotate(360deg); } }
+.ambraia-spin svg { animation: ambraia-spin 1s linear infinite; }
+.ambraia-setup { width: min(560px, 95vw); }
+.ambraia-choice { display: flex; gap: 14px; align-items: center; padding: 14px; border: 1px solid var(--ob-border); border-radius: 10px; margin: 10px 0; cursor: pointer; }
+.ambraia-choice:hover { background: var(--ob-hover); }
+.ambraia-choice.is-primary { border-color: rgba(35, 131, 226, 0.6); }
+.ambraia-choice-icon { font-size: 28px; }
+.ambraia-choice-title { font-weight: 600; color: var(--text-normal); }
+.ambraia-choice-desc { font-size: 13px; color: var(--text-muted); }
+.ambraia-steps { padding-left: 20px; }
+.ambraia-steps li { margin-bottom: 10px; line-height: 1.5; }
+.ambraia-steps code { user-select: all; }
+.ambraia-code-input { width: 100%; font-family: var(--font-monospace); font-size: 12px; }
+.ambraia-setup-status { min-height: 1.5em; color: var(--text-muted); margin: 6px 0; white-space: pre-wrap; }
+.ambraia-done-icon { font-size: 48px; text-align: center; }
+.ambraia-steps-bar { display: flex; gap: 6px; margin: 0 0 14px; }
+.ambraia-steps-dot { flex: 1; height: 4px; border-radius: 2px; background: var(--ob-border); }
+.ambraia-steps-dot.is-done { background: var(--interactive-accent); }
+.ambraia-provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 10px 0; }
+.ambraia-provider { padding: 12px; border: 1px solid var(--ob-border); border-left: 4px solid var(--ambraia-provider, var(--interactive-accent)); border-radius: 10px; cursor: pointer; }
+.ambraia-provider:hover { background: var(--ob-hover); }
+.ambraia-provider.is-disabled { opacity: 0.45; cursor: not-allowed; }
+.ambraia-provider-name { font-weight: 600; color: var(--text-normal); }
+.ambraia-provider-desc { font-size: 12px; color: var(--text-muted); }
+.ambraia-help-btn { padding: 2px; margin-inline-start: 4px; color: var(--text-faint); }
+.ambraia-help-btn.is-active, .ambraia-help-btn:hover { color: var(--interactive-accent); }
+.ambraia-help-row { display: flex; align-items: center; gap: 4px; margin: 8px 0 4px; font-weight: 600; }
+.ambraia-help { margin: 4px 0 12px; padding: 10px 14px; border-radius: 8px; background: var(--ob-gray-bg); font-size: 13px; line-height: 1.5; }
+.ambraia-help-title { font-weight: 600; margin-bottom: 4px; }
+.ambraia-help ol { margin: 0; padding-inline-start: 20px; }
+.ambraia-help li { margin: 3px 0; }
+.ambraia-help code { user-select: all; word-break: break-all; }
+.ambraia-wide { flex-wrap: wrap; }
+.ambraia-wide .setting-item-control { flex: 1 1 260px; }
+.ambraia-wide .setting-item-control input { flex: 1; min-width: 0; }
+.ambraia-meter { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); min-height: 18px; }
+.ambraia-meter-bar { height: 4px; border-radius: 2px; background: var(--ob-red); flex: none; transition: width 0.2s; }
+.ambraia-meter[data-level='2'] .ambraia-meter-bar { background: var(--ob-orange); }
+.ambraia-meter[data-level='3'] .ambraia-meter-bar, .ambraia-meter[data-level='4'] .ambraia-meter-bar { background: var(--ob-green); }
+.ambraia-note { font-size: 13px; color: var(--text-muted); }
+.ambraia-pin { font: 600 22px/1.4 var(--font-monospace); letter-spacing: 2px; text-align: center; margin: 10px 0; user-select: all; }
+.ambraia-pin-input { width: 100%; margin-top: 8px; font-family: var(--font-monospace); }
+.ambraia-suggest-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.ambraia-chip { font-size: 12px; padding: 2px 10px; border-radius: 12px; height: auto; }
+.ambraia-rtl .ambraia-setup, .ambraia-rtl .ambraia-settings { direction: rtl; }
+.ambraia-log { max-height: 60vh; overflow-y: auto; font-family: var(--font-monospace); font-size: 12px; }
+.ambraia-log-row { padding: 3px 0; border-bottom: 1px solid var(--ob-border); word-break: break-word; }
+.ambraia-log-row[data-level='error'] { color: var(--ob-red); }
+.ambraia-log-row[data-level='warn'] { color: var(--ob-orange); }
+.ambraia-log-time { color: var(--text-faint); margin-right: 8px; }
+.ambraia-settings-status { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px; background: var(--ob-gray-bg); margin: 6px 0 10px; font-size: 14px; }
+.ambraia-settings-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ob-gray); flex-shrink: 0; }
+.ambraia-settings-status[data-status='idle'] .ambraia-settings-dot, .ambraia-settings-status[data-status='syncing'] .ambraia-settings-dot { background: var(--ob-green); }
+.ambraia-settings-status[data-status='error'] .ambraia-settings-dot, .ambraia-settings-status[data-status='auth'] .ambraia-settings-dot { background: var(--ob-red); }
+.ambraia-settings-status[data-status='offline'] .ambraia-settings-dot, .ambraia-settings-status[data-status='paused'] .ambraia-settings-dot, .ambraia-settings-status[data-status='locked'] .ambraia-settings-dot { background: var(--ob-orange); }
+
+/* ---------- databases --------------------------------------------------- */
+.ambraia-db { margin: 10px 0 18px; font-size: 14px; }
+.block-language-ambraia { overflow: visible; }
+.ambraia-db-page { padding: 32px max(24px, calc((100% - 1100px) / 2)) !important; }
+.ambraia-db-error { color: var(--ob-red); background: var(--ob-red-bg); border-radius: 4px; padding: 8px 10px; margin: 6px 0; font-size: 13px; }
+.ambraia-db-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+.ambraia-db-title { font-size: 1.25em; font-weight: 700; color: var(--text-normal); padding: 2px 0; cursor: text; border-radius: 4px; }
+.ambraia-db-title:hover { background: var(--ob-hover); }
+.ambraia-db-toolbar { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--ob-border); padding-bottom: 4px; flex-wrap: wrap; }
+.ambraia-db-tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.ambraia-db-tab { display: flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 4px; color: var(--text-muted); cursor: pointer; white-space: nowrap; font-size: 13px; }
+.ambraia-db-tab svg { width: 14px; height: 14px; }
+.ambraia-db-tab:hover { background: var(--ob-hover); }
+.ambraia-db-tab.is-active { color: var(--text-normal); font-weight: 500; box-shadow: inset 0 -2px 0 var(--text-normal); border-radius: 4px 4px 0 0; }
+.ambraia-db-search { height: 26px; width: 130px; font-size: 13px; border: none !important; background: transparent !important; }
+.ambraia-db-search:focus { background: var(--ob-hover) !important; }
+.ambraia-db-btn { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 4px; color: var(--text-muted); cursor: pointer; }
+.ambraia-db-btn:hover { background: var(--ob-hover); color: var(--text-normal); }
+.ambraia-db-btn.is-active { color: #2383e2; }
+.ambraia-db-btn svg { width: 16px; height: 16px; }
+.ambraia-db-new { height: 26px; padding: 0 10px; font-size: 13px; background: #2383e2 !important; color: #fff !important; border-radius: 4px; }
+.ambraia-db-body { position: relative; }
+.ambraia-db-body.is-table, .ambraia-db-body.is-board { overflow-x: auto; }
+.ambraia-db-foot { color: var(--text-faint); font-size: 12px; padding: 6px 2px; }
+
+.ambraia-db-table { border-collapse: collapse; width: max-content; min-width: 100%; table-layout: fixed; margin: 0 !important; }
+.ambraia-db-table th, .ambraia-db-table td { border: 1px solid var(--ob-border) !important; padding: 0 !important; vertical-align: top; text-align: left; background: transparent !important; }
+.ambraia-db-table tr > :first-child { border-left: none !important; }
+.ambraia-db-table tr > :last-child { border-right: none !important; }
+.ambraia-db-table th { position: relative; height: 33px; color: var(--text-muted); font-weight: 400 !important; font-size: 13px; white-space: nowrap; cursor: pointer; user-select: none; padding: 0 8px !important; vertical-align: middle; min-width: 80px; }
+.ambraia-db-table th:hover { background: var(--ob-hover) !important; }
+.ambraia-db-table th > span { vertical-align: middle; }
+.ambraia-db-th-icon { display: inline-flex; margin-right: 6px; color: var(--text-faint); }
+.ambraia-db-th-icon svg, .ambraia-db-th-sort svg { width: 14px; height: 14px; }
+.ambraia-db-th-sort { display: inline-flex; margin-left: 4px; color: #2383e2; }
+.ambraia-db-th-add, .ambraia-db-td-add { width: 36px; min-width: 36px !important; text-align: center !important; color: var(--text-faint); }
+.ambraia-db-resize { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: col-resize; z-index: 2; }
+.ambraia-db-resize:hover, .ambraia-db-resize.is-dragging { background: rgba(35, 131, 226, 0.5); }
+.ambraia-db-cell { min-height: 33px; padding: 6px 8px; line-height: 1.45; word-break: break-word; cursor: text; }
+.ambraia-db-cell:hover { background: var(--ob-hover); }
+.ambraia-db-cell.is-number { text-align: right; font-variant-numeric: tabular-nums; }
+.ambraia-db-cell.is-readonly { cursor: default; color: var(--text-muted); }
+.ambraia-db-cell.is-editing { padding: 0; box-shadow: inset 0 0 0 2px rgba(35, 131, 226, 0.6); }
+.ambraia-db-cell input[type='checkbox'] { margin: 0; cursor: pointer; }
+.ambraia-db-input { width: 100%; height: 100%; min-height: 33px; border: none !important; border-radius: 0 !important; background: var(--background-primary) !important; padding: 6px 8px !important; font-size: 14px; box-shadow: none !important; }
+.ambraia-db-name { display: flex; align-items: flex-start; gap: 6px; position: relative; font-weight: 500; }
+.ambraia-db-name a.internal-link { color: var(--text-normal); text-decoration: none; border-bottom: 1px solid var(--ob-border); }
+.ambraia-db-row-icon { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px; }
+.ambraia-db-row-icon svg { width: 15px; height: 15px; }
+.ambraia-db-row-icon img { width: 16px; height: 16px; object-fit: cover; border-radius: 3px; }
+.ambraia-db-open { display: none; margin-left: auto; font-size: 10px; letter-spacing: 0.05em; font-weight: 600; color: var(--text-muted); border: 1px solid var(--ob-border); border-radius: 4px; padding: 1px 5px; background: var(--background-primary); cursor: pointer; }
+.ambraia-db-name:hover .ambraia-db-open, .ambraia-card:hover .ambraia-db-open, .ambraia-list-item:hover .ambraia-db-open { display: inline-block; }
+.is-mobile .ambraia-db-open { display: inline-block; }
+.ambraia-db-rel { margin-right: 6px; }
+.ambraia-db-add-row td, .ambraia-db-add-row { color: var(--text-faint); cursor: pointer; padding: 6px 8px !important; font-size: 13px; }
+.ambraia-db-add-row:hover td, .ambraia-list-item.ambraia-db-add-row:hover { background: var(--ob-hover) !important; color: var(--text-muted); }
+.ambraia-db-add-row svg { width: 14px; height: 14px; vertical-align: -2px; }
+.ambraia-db-table tfoot td { color: var(--text-faint); font-size: 12px; padding: 6px 8px !important; text-align: right; border: none !important; }
+.ambraia-db-table tbody tr.is-dragging { opacity: 0.4; }
+.ambraia-db-table tbody tr.is-over { box-shadow: inset 0 2px 0 #2383e2; }
+
+.ambraia-pill { display: inline-block; padding: 0 6px; border-radius: 3px; margin: 1px 4px 1px 0; font-size: 13px; line-height: 20px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; background: var(--ob-gray-bg); }
+
+.ambraia-board { display: flex; gap: 12px; align-items: flex-start; padding: 8px 2px 12px; min-height: 120px; }
+.ambraia-board-col { width: 260px; flex-shrink: 0; border-radius: 6px; padding: 6px; }
+.ambraia-board-col.is-over { background: var(--ob-hover); }
+.ambraia-board-col.is-add { width: 180px; }
+.ambraia-board-head { display: flex; align-items: center; gap: 6px; padding: 4px 2px 8px; }
+.ambraia-board-count { color: var(--text-faint); font-size: 13px; }
+.ambraia-board-cards { display: flex; flex-direction: column; gap: 8px; min-height: 20px; }
+.ambraia-board-add { color: var(--text-faint); padding: 6px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+.ambraia-board-add:hover { background: var(--ob-hover); }
+
+.ambraia-card { background: var(--background-primary); border-radius: 6px; box-shadow: rgba(15, 15, 15, 0.1) 0 0 0 1px, rgba(15, 15, 15, 0.1) 0 2px 4px; overflow: hidden; cursor: pointer; position: relative; transition: background 0.1s; }
+body.theme-dark .ambraia-card { background: #252525; box-shadow: rgba(255, 255, 255, 0.094) 0 0 0 1px; }
+.ambraia-card:hover { background: var(--background-secondary); }
+.ambraia-card.is-dragging { opacity: 0.4; }
+.ambraia-card.is-add { display: flex; align-items: center; justify-content: center; color: var(--text-faint); min-height: 120px; box-shadow: none; border: 1px dashed var(--ob-border); }
+.ambraia-card-cover { height: 120px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--ob-border); }
+.ambraia-board .ambraia-card-cover { height: 90px; }
+.ambraia-card-cover img { width: 100%; height: 100%; object-fit: cover; }
+.ambraia-card-cover-icon { font-size: 40px; }
+.ambraia-card-cover-icon svg { width: 36px; height: 36px; }
+.ambraia-card-title { display: flex; align-items: center; gap: 6px; padding: 8px 10px 4px; font-weight: 500; color: var(--text-normal); word-break: break-word; }
+.ambraia-card-prop { padding: 0 10px 4px; font-size: 12px; color: var(--text-muted); }
+.ambraia-card > :last-child { padding-bottom: 8px; }
+.ambraia-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; padding: 10px 2px; }
+
+.ambraia-list { display: flex; flex-direction: column; padding: 4px 0; }
+.ambraia-list-item { display: flex; align-items: center; gap: 12px; padding: 5px 6px; border-radius: 4px; cursor: pointer; border-bottom: 1px solid var(--ob-border); }
+.ambraia-list-item:hover { background: var(--ob-hover); }
+.ambraia-list-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.ambraia-list-props { display: flex; gap: 10px; color: var(--text-muted); font-size: 12px; flex-wrap: wrap; justify-content: flex-end; }
+.ambraia-list-scroll { max-height: 600px; overflow-y: auto; }
+
+.ambraia-cal-head { display: flex; align-items: center; gap: 6px; padding: 8px 0; }
+.ambraia-cal-title { font-weight: 600; font-size: 15px; min-width: 150px; text-align: center; color: var(--text-normal); }
+.ambraia-cal-field { margin-left: auto; color: var(--text-faint); font-size: 12px; }
+.ambraia-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--ob-border); border-left: 1px solid var(--ob-border); }
+.ambraia-cal-dow { font-size: 12px; color: var(--text-faint); padding: 4px 6px; border-right: 1px solid var(--ob-border); border-bottom: 1px solid var(--ob-border); }
+.ambraia-cal-day { min-height: 96px; padding: 4px; border-right: 1px solid var(--ob-border); border-bottom: 1px solid var(--ob-border); display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ambraia-cal-day.is-other { background: var(--background-secondary); color: var(--text-faint); }
+.ambraia-cal-day.is-over { background: rgba(35, 131, 226, 0.08); }
+.ambraia-cal-daynum { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); }
+.ambraia-cal-day.is-today .ambraia-cal-daynum > span:first-child { background: #eb5757; color: #fff; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; }
+.ambraia-cal-add { opacity: 0; cursor: pointer; padding: 0 4px; border-radius: 3px; font-size: 14px; }
+.ambraia-cal-day:hover .ambraia-cal-add { opacity: 1; }
+.ambraia-cal-add:hover { background: var(--ob-hover); }
+.ambraia-cal-event { display: flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 5px; border-radius: 4px; background: var(--background-primary); box-shadow: rgba(15, 15, 15, 0.1) 0 0 0 1px, rgba(15, 15, 15, 0.1) 0 1px 2px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-normal); }
+body.theme-dark .ambraia-cal-event { background: #2a2a2a; }
+.ambraia-cal-event.is-dragging { opacity: 0.4; }
+.ambraia-cal-undated { margin-top: 10px; }
+.ambraia-cal-undated-list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* phones */
+.is-phone .ambraia-page-icon { font-size: 56px; }
+.is-phone .ambraia-header.has-banner .ambraia-page-icon { margin-top: -30px; }
+.is-phone .ambraia-db-search { width: 90px; }
+.is-phone .ambraia-cal-day { min-height: 64px; }
+.is-phone .ambraia-board-col { width: 220px; }
+
+/* =========================================================================
+   Calendar (side panel)
+   ========================================================================= */
+
+/* =========================================================================
+   Ambraia AI — chat
+   ========================================================================= */
+.ambraia-ai-chat { display: flex; flex-direction: column; height: 100%; padding: 0 !important; font-size: 14px; }
+.ambraia-ai-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--ob-border); flex: none; }
+.ambraia-ai-title { font-weight: 600; }
+.ambraia-ai-head-tools { display: flex; gap: 2px; }
+.ambraia-ai-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 14px; user-select: text; }
+.ambraia-ai-msg { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ambraia-ai-msg.is-user { align-items: flex-end; }
+.ambraia-ai-bubble { background: var(--ob-gray-bg); border-radius: 12px 12px 4px 12px; padding: 8px 12px; max-width: 90%; white-space: pre-wrap; word-break: break-word; }
+.ambraia-ai-imgs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.ambraia-ai-imgs img { max-height: 90px; border-radius: 6px; }
+.ambraia-ai-ctx { font-size: 11px; color: var(--text-faint); max-width: 90%; text-align: right; }
+.ambraia-ai-body { min-width: 0; }
+.ambraia-ai-md > :first-child { margin-top: 0; }
+.ambraia-ai-md > :last-child { margin-bottom: 0; }
+.ambraia-ai-md pre { max-width: 100%; overflow-x: auto; }
+.ambraia-ai-md table { display: block; overflow-x: auto; }
+.ambraia-ai-typing { color: var(--text-faint); animation: ambraia-ai-pulse 1.2s infinite; }
+@keyframes ambraia-ai-pulse { 50% { opacity: .3; } }
+.ambraia-ai-think { margin-bottom: 6px; font-size: 12.5px; color: var(--text-muted); }
+.ambraia-ai-think summary { cursor: pointer; color: var(--text-faint); }
+.ambraia-ai-think-text { white-space: pre-wrap; border-left: 2px solid var(--ob-border); padding-left: 8px; margin-top: 4px; max-height: 240px; overflow-y: auto; }
+.ambraia-ai-tools { display: flex; flex-direction: column; gap: 4px; }
+.ambraia-ai-tools:empty { display: none; }
+.ambraia-ai-tool { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); background: var(--background-secondary); border-radius: 6px; padding: 3px 8px; width: fit-content; max-width: 100%; }
+.ambraia-ai-tool-icon { display: inline-flex; }
+.ambraia-ai-tool-icon svg { width: 13px; height: 13px; }
+.ambraia-ai-tool.is-running .ambraia-ai-tool-icon svg { animation: ambraia-ai-spin 1s linear infinite; }
+@keyframes ambraia-ai-spin { to { transform: rotate(360deg); } }
+.ambraia-ai-tool.is-ok .ambraia-ai-tool-icon { color: var(--ob-green); }
+.ambraia-ai-tool.is-failed .ambraia-ai-tool-icon { color: var(--ob-red); }
+.ambraia-ai-tool.is-note { font-style: italic; }
+.ambraia-ai-confirm { border: 1px solid var(--ob-border); border-radius: 8px; padding: 8px 10px; background: var(--background-primary); box-shadow: var(--ob-shadow); }
+.ambraia-ai-confirm-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.ambraia-ai-confirm-preview { font-size: 12px; max-height: 200px; overflow: auto; white-space: pre-wrap; background: var(--background-secondary); padding: 6px 8px; border-radius: 6px; margin: 4px 0 8px; }
+.ambraia-ai-confirm-bar { display: flex; gap: 6px; align-items: center; }
+.ambraia-ai-sources { font-size: 12px; color: var(--text-faint); display: flex; flex-wrap: wrap; gap: 4px 8px; }
+.ambraia-ai-source { color: var(--ob-blue); cursor: pointer; }
+.ambraia-ai-actions { display: flex; gap: 2px; opacity: .55; transition: opacity .15s; }
+.ambraia-ai-msg:hover .ambraia-ai-actions, .ambraia-ai-actions:focus-within { opacity: 1; }
+.ambraia-ai-actions .clickable-icon svg { width: 14px; height: 14px; }
+.ambraia-ai-error { color: var(--ob-red); background: var(--ob-red-bg); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; font-size: 13px; }
+.ambraia-ai-ok { color: var(--ob-green); background: var(--ob-green-bg); border-radius: 6px; padding: 8px 10px; font-size: 13px; }
+.ambraia-ai-confirm-bar .ambraia-ai-ok { padding: 2px 8px; }
+.ambraia-ai-muted { color: var(--text-faint); font-size: 12px; }
+.ambraia-ai-empty { margin: auto; text-align: center; max-width: 320px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.ambraia-ai-empty-icon { display: inline-flex; color: var(--interactive-accent); }
+.ambraia-ai-empty-icon svg { width: 30px; height: 30px; }
+.ambraia-ai-empty-title { font-weight: 600; font-size: 16px; }
+.ambraia-ai-empty-text { color: var(--text-muted); font-size: 13px; }
+.ambraia-ai-suggestions { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 6px; }
+.ambraia-ai-suggestion { text-align: left; border: 1px solid var(--ob-border); border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 13px; display: flex; flex-direction: column; }
+.ambraia-ai-suggestion:hover { background: var(--ob-hover); }
+.ambraia-ai-suggestion-mode { font-size: 10.5px; text-transform: uppercase; color: var(--text-faint); letter-spacing: .03em; }
+.ambraia-ai-related { flex: none; border-top: 1px solid var(--ob-border); padding: 4px 12px; font-size: 12.5px; max-height: 30%; overflow-y: auto; }
+.ambraia-ai-related summary { cursor: pointer; color: var(--text-muted); padding: 2px 0; }
+.ambraia-ai-related-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+.ambraia-ai-related-row a { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.ambraia-ai-composer { flex: none; margin: 8px 10px 10px; border: 1px solid var(--ob-border); border-radius: 10px; background: var(--background-primary); box-shadow: rgba(15,15,15,.05) 0 1px 3px; }
+.ambraia-ai-composer:focus-within { border-color: var(--ob-blue); }
+.ambraia-ai-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px 0; }
+.ambraia-ai-chips:empty { display: none; }
+.ambraia-ai-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; background: var(--ob-gray-bg); border-radius: 4px; padding: 1px 6px; cursor: default; max-width: 180px; }
+.ambraia-ai-chip.is-off { opacity: .5; text-decoration: line-through; }
+.ambraia-ai-chip[aria-label*="clic"] { cursor: pointer; }
+.ambraia-ai-chip-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ambraia-ai-chip-icon, .ambraia-ai-chip-x { display: inline-flex; }
+.ambraia-ai-chip-icon svg, .ambraia-ai-chip-x svg { width: 12px; height: 12px; }
+.ambraia-ai-chip-x { cursor: pointer; color: var(--text-faint); }
+.ambraia-ai-chip-x:hover { color: var(--text-normal); }
+.ambraia-ai-input { width: 100%; border: none !important; box-shadow: none !important; background: transparent !important; resize: none; padding: 8px 10px; font-size: 14px; min-height: 44px; max-height: 220px; }
+.ambraia-ai-composer-bar { display: flex; align-items: center; gap: 6px; padding: 2px 6px 6px; min-width: 0; flex-wrap: wrap; }
+.ambraia-ai-bar-left { display: flex; align-items: center; gap: 4px; flex: 1 1 120px; min-width: 0; overflow: hidden; }
+.ambraia-ai-bar-left select { font-size: 12px; height: 26px; padding: 0 20px 0 8px; min-width: 0; flex: 0 1 auto; max-width: 48%; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+.ambraia-ai-bar-right { display: flex; align-items: center; gap: 2px; flex: none; margin-inline-start: auto; }
+.ambraia-ai-bar-right .clickable-icon { width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.ambraia-ai-composer { box-sizing: border-box; max-width: calc(100% - 20px); margin-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important; }
+.ambraia-ai-send { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--interactive-accent); color: var(--text-on-accent); cursor: pointer; flex: none; }
+.ambraia-ai-send svg { width: 16px; height: 16px; }
+.ambraia-ai-send.is-busy { background: var(--text-normal); }
+
+/* ---------- setup wizard */
+.ambraia-ai-setup { width: min(640px, 94vw); }
+.ambraia-ai-steps { display: flex; gap: 12px; font-size: 12px; color: var(--text-faint); margin-bottom: 4px; }
+.ambraia-ai-step.is-active { color: var(--ob-blue); font-weight: 600; }
+.ambraia-ai-step.is-done { color: var(--ob-green); }
+.ambraia-ai-group { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--text-faint); margin: 14px 0 6px; }
+.ambraia-ai-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.ambraia-ai-card { display: flex !important; align-items: flex-start; justify-content: flex-start !important; gap: 8px; text-align: left; height: auto !important; padding: 10px !important; white-space: normal !important; position: relative; }
+.ambraia-ai-card-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: var(--background-modifier-hover); color: var(--text-muted); font-size: 15px; font-weight: 650; line-height: 1; }
+.ambraia-ai-card-icon svg { width: 17px; height: 17px; }
+.ambraia-ai-ok, .ambraia-ai-error { display: flex; gap: 8px; align-items: flex-start; }
+.ambraia-ai-status-icon { flex: none; display: inline-flex; margin-top: 1px; }
+.ambraia-ai-status-icon svg { width: 16px; height: 16px; }
+.ambraia-ai-card-name { font-weight: 600; font-size: 13px; }
+.ambraia-ai-card-hint { font-size: 11.5px; color: var(--text-muted); font-weight: 400; margin-top: 2px; }
+.ambraia-ai-badge { position: absolute; top: 4px; right: 6px; font-size: 10px; color: var(--ob-green); }
+.ambraia-ai-howto { font-size: 13px; color: var(--text-muted); padding-left: 20px; }
+.ambraia-ai-howto li { margin: 2px 0; }
+.ambraia-ai-form { display: flex; flex-direction: column; gap: 12px; margin: 10px 0; }
+.ambraia-ai-field { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.ambraia-ai-field label { font-weight: 600; font-size: 13px; }
+.ambraia-ai-field input, .ambraia-ai-field select { width: 100%; }
+.ambraia-ai-keywrap { display: flex; gap: 4px; }
+.ambraia-ai-keywrap input { flex: 1; }
+.ambraia-ai-adv summary { cursor: pointer; color: var(--text-muted); font-size: 12.5px; }
+.ambraia-ai-manual { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-muted); margin-top: 10px; flex-wrap: wrap; }
+.ambraia-ai-manual input { flex: 1; min-width: 180px; }
+.ambraia-ai-bar { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.ambraia-ai-filter { width: 100%; margin-bottom: 6px; }
+.ambraia-ai-models { max-height: 280px; overflow-y: auto; border: 1px solid var(--ob-border); border-radius: 8px; padding: 4px; }
+.ambraia-ai-model { padding: 5px 8px; border-radius: 4px; cursor: pointer; font-family: var(--font-monospace); font-size: 12.5px; word-break: break-all; }
+.ambraia-ai-model:hover { background: var(--ob-hover); }
+.ambraia-ai-model.is-selected { background: var(--ob-blue-bg); color: var(--ob-blue); font-weight: 600; }
+
+/* ---------- inline action modal */
+.ambraia-ai-inline { width: min(680px, 94vw); }
+.ambraia-ai-inline-src summary { cursor: pointer; color: var(--text-faint); font-size: 12px; }
+.ambraia-ai-inline-srctext { white-space: pre-wrap; font-size: 12.5px; color: var(--text-muted); border-left: 2px solid var(--ob-border); padding-left: 8px; max-height: 120px; overflow-y: auto; margin: 4px 0 8px; }
+.ambraia-ai-inline-out { min-height: 60px; max-height: 50vh; overflow-y: auto; padding: 8px 2px; user-select: text; }
+.ambraia-ai-stream { white-space: pre-wrap; }
+.ambraia-ai-thinking-live { color: var(--text-faint); font-size: 12px; animation: ambraia-ai-pulse 1.2s infinite; }
+.ambraia-ai-inline-refine textarea { width: 100%; resize: vertical; min-height: 34px; margin-top: 6px; }
+.ambraia-ai-inline-bar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; margin-top: 10px; }
+.ambraia-ai-inline-bar button { display: inline-flex; align-items: center; gap: 4px; }
+.ambraia-ai-btn-icon { display: inline-flex; }
+.ambraia-ai-btn-icon svg { width: 14px; height: 14px; }
+.ambraia-ai-settings-models .setting-item { padding: 6px 0; }
+.ambraia-settings-status[data-status="off"] .ambraia-settings-dot { background: var(--text-faint); }
+
+/* AI: progetto attivo */
+.ambraia-ai-project { display: inline-flex; align-items: center; gap: 4px; max-width: 40%; }
+.ambraia-ai-project.is-active { color: var(--interactive-accent); background: var(--background-modifier-hover); border-radius: var(--radius-s); }
+.ambraia-ai-project-name { font-size: var(--font-ui-smaller); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* settings: nested toggles, sign-in */
+.ambraia-sub-setting .setting-item-name { font-size: var(--font-ui-small); }
+.ambraia-login-btn { display: flex; align-items: center; justify-content: center; width: 100%; height: auto; min-height: 44px; margin: 12px 0 6px; font-size: var(--font-ui-medium); font-weight: 600; background: var(--ambraia-provider, var(--interactive-accent)) !important; color: #fff !important; border-radius: 10px; }
+.ambraia-login-btn:hover { filter: brightness(1.08); }
+.ambraia-login-btn[disabled] { opacity: .6; }
+.ambraia-auth-box:empty { display: none; }
+.ambraia-auth-box { margin: 10px 0; padding: 12px; border: 1px solid var(--background-modifier-border); border-radius: 10px; background: var(--background-secondary); }
+.ambraia-auth-box p { margin: 0 0 8px; }
+.ambraia-auth-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; flex-wrap: wrap; }
+.ambraia-device-code { font-family: var(--font-monospace); font-size: 1.8em; font-weight: 700; letter-spacing: .12em; text-align: center; padding: 8px; user-select: all; -webkit-user-select: all; }
+.ambraia-own-app { display: block; text-align: center; font-size: var(--font-ui-smaller); color: var(--text-muted); margin: 4px 0; }
+
+/* table cells carry the cell classes themselves: keep their padding over the reset above */
+.ambraia-db-table td.ambraia-db-cell { padding: 6px 8px !important; }
+.ambraia-db-table td.ambraia-db-cell.is-editing { padding: 0 !important; }
+.ambraia-db-table td.ambraia-db-name { display: table-cell; padding: 6px 8px !important; white-space: normal; }
+td.ambraia-db-name .ambraia-db-row-icon { vertical-align: -3px; margin-right: 6px; }
+td.ambraia-db-name .ambraia-db-open { float: right; margin-top: 2px; }
+
+/* multiple cloud services */
+.ambraia-target { border: 1px solid var(--background-modifier-border); border-radius: 8px; padding: 0 12px; margin: 8px 0; }
+.ambraia-target-head { border-top: none !important; }
+.ambraia-target-head .setting-item-name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.ambraia-target-dot[data-status='idle'], .ambraia-target-dot[data-status='syncing'] { background: var(--ob-green); }
+.ambraia-target-dot[data-status='error'], .ambraia-target-dot[data-status='auth'] { background: var(--ob-red); }
+.ambraia-target-dot[data-status='offline'], .ambraia-target-dot[data-status='paused'], .ambraia-target-dot[data-status='locked'] { background: var(--ob-orange); }
+.ambraia-target-dot[data-status='off'] { background: var(--text-faint); }
+.ambraia-target-body { padding-bottom: 6px; }
+.ambraia-target-body > summary { cursor: pointer; color: var(--text-muted); font-size: var(--font-ui-small); padding: 2px 0 8px; }
+.ambraia-target-add { border-top: none !important; }
+
+.ambraia-target-health { font-size: var(--font-ui-smaller); color: var(--text-muted); padding: 0 var(--size-4-3) var(--size-4-2); }
+.ambraia-target-health:empty { display: none; }
+.ambraia-target-problem { color: var(--text-warning); margin-bottom: var(--size-4-1); }
+.ambraia-target-space.mod-low { color: var(--text-warning); }
+.ambraia-sync-status[data-status='full'] .ambraia-sync-icon { color: var(--ob-orange); }
+.ambraia-target-dot[data-status='full'], .ambraia-settings-status[data-status='full'] .ambraia-settings-dot { background: var(--ob-orange); }
+
+/* =========================================================================
+   Ambraia 2
+   ========================================================================= */
+
+/* ---------- one sync button: hide Obsidian's own Sync icon in the status bar */
+
+/* ---------- properties hidden (they stay in the file) */
+/* never shown inside a note (editor, reading view, embeds, hover previews): no box, no gap in the scroll.
+   The "File properties" side panel is not affected. */
+body.ambraia-hide-props .markdown-source-view .metadata-container,
+body.ambraia-hide-props .markdown-reading-view .metadata-container,
+body.ambraia-hide-props .markdown-preview-view .metadata-container,
+body.ambraia-hide-props .markdown-embed .metadata-container,
+body.ambraia-hide-props .hover-popover .metadata-container,
+body.ambraia-hide-props .markdown-preview-view .frontmatter-container,
+body.ambraia-hide-props .markdown-preview-view pre.frontmatter,
+body.ambraia-hide-props .markdown-preview-view .mod-frontmatter { display: none !important; }
+
+/* ---------- page header actions */
+.ambraia-header-action { display: inline-flex; align-items: center; gap: 6px; }
+.ambraia-header-action-icon { display: inline-flex; }
+.ambraia-header-action-icon svg { width: 15px; height: 15px; }
+
+/* ---------- file explorer: favourites & spaces, "+" on folders, today */
+.ambraia-ex-pins { padding: 2px 0 6px; margin: 0 var(--size-4-2, 8px) 4px; border-bottom: 1px solid var(--ob-border); font-size: var(--nav-item-size, 13px); }
+.ambraia-ex-pins:empty { display: none; }
+.ambraia-ex-group-head { display: flex; align-items: center; gap: 4px; padding: 3px 4px; border-radius: var(--radius-s); color: var(--text-faint); font-size: 12px; font-weight: 500; cursor: pointer; user-select: none; }
+.ambraia-ex-group-head:hover { background: var(--ob-hover); color: var(--text-muted); }
+.ambraia-ex-group-head.is-drop-target, .ambraia-ex-item.is-drop-target { background: rgba(35, 131, 226, 0.12); box-shadow: inset 0 0 0 1px rgba(35, 131, 226, 0.5); }
+.ambraia-ex-chevron { display: inline-flex; width: 14px; justify-content: center; transition: transform 0.12s; transform: rotate(90deg); }
+.ambraia-ex-group-head.is-collapsed .ambraia-ex-chevron { transform: none; }
+.ambraia-ex-chevron svg { width: 11px; height: 11px; }
+.ambraia-ex-group-icon { display: inline-flex; font-size: 13px; }
+.ambraia-ex-group-icon svg { width: 13px; height: 13px; }
+.ambraia-ex-group-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ambraia-ex-group-items { padding: 1px 0 4px; }
+.ambraia-ex-item { display: flex; align-items: center; gap: 6px; padding: 3px 6px 3px 22px !important; border-radius: var(--radius-s); color: var(--nav-item-color, var(--text-muted)); cursor: pointer; }
+.ambraia-ex-item:hover { background: var(--nav-item-background-hover, var(--ob-hover)); color: var(--text-normal); }
+.ambraia-ex-item.is-active { background: var(--nav-item-background-active, var(--ob-hover)); color: var(--text-normal); font-weight: 500; }
+.ambraia-ex-item-icon { display: inline-flex; width: 18px; justify-content: center; flex: none; font-size: 14px; }
+.ambraia-ex-item-icon svg { width: 14px; height: 14px; }
+.ambraia-ex-item-icon img { width: 16px; height: 16px; object-fit: cover; border-radius: 3px; }
+.ambraia-ex-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ambraia-ex-empty { padding: 4px 6px 6px 22px; font-size: 12px; color: var(--text-faint); }
+.nav-folder-title { position: relative; }
+.ambraia-ex-add { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: none; padding: 2px; border-radius: var(--radius-s); color: var(--text-faint); }
+.ambraia-ex-add svg { width: 14px; height: 14px; }
+.nav-folder-title:hover .ambraia-ex-add { display: inline-flex; }
+.ambraia-ex-add:hover { background: var(--ob-hover); color: var(--text-normal); }
+.is-mobile .ambraia-ex-add { display: none !important; }
+
+/* ---------- page icons in links ("mentions") */
+.ambraia-link-icon { display: inline-flex; align-items: center; justify-content: center; width: 1.15em; height: 1.15em; margin-right: 0.15em; vertical-align: -0.15em; font-size: 0.95em; line-height: 1; border-radius: 3px; cursor: pointer; user-select: none; }
+.ambraia-link-icon:hover { background: var(--ob-hover); }
+.ambraia-link-icon svg { width: 0.9em; height: 0.9em; color: var(--text-muted); }
+.ambraia-link-icon img { width: 1em; height: 1em; object-fit: cover; border-radius: 2px; }
+body.ambraia-link-icons .ambraia-page-link, body.ambraia-link-icons .ambraia-link-icon + .cm-hmd-internal-link .cm-underline,
+body.ambraia-link-icons .ambraia-link-icon + .cm-hmd-internal-link { font-weight: 500; text-decoration-color: var(--ob-border); }
+
+/* ---------- "@" mentions and page picker */
+.ambraia-mention { display: flex !important; align-items: center; gap: 10px; }
+.ambraia-mention-icon { width: 22px; height: 22px; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; color: var(--text-muted); }
+.ambraia-mention-icon svg { width: 16px; height: 16px; }
+.ambraia-mention-icon img { width: 18px; height: 18px; object-fit: cover; border-radius: 3px; }
+.ambraia-mention-body { min-width: 0; }
+.ambraia-mention-title { color: var(--text-normal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ambraia-mention-path { font-size: 12px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- keyboard shortcuts */
+.ambraia-shortcuts-modal { width: min(640px, 95vw); }
+.ambraia-shortcuts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px 24px; }
+.ambraia-shortcuts-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); margin: 8px 0 4px; }
+.ambraia-shortcuts-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--ob-border); font-size: 14px; }
+.ambraia-shortcuts-row kbd { font-family: var(--font-interface); font-size: 12px; padding: 1px 6px; border-radius: 4px; background: var(--ob-gray-bg); border: 1px solid var(--ob-border); color: var(--text-muted); white-space: nowrap; }
+.ambraia-shortcuts-off { padding: 8px 12px; border-radius: 8px; background: var(--ob-yellow-bg); margin-bottom: 8px; font-size: 13px; }
+.ambraia-shortcuts-foot { display: flex; justify-content: flex-end; margin-top: 14px; }
+
+/* ---------- settings */
+.ambraia-settings { max-width: 760px; }
+.ambraia-set-group { border: 1px solid var(--background-modifier-border); border-radius: 10px; padding: 2px 14px; margin: 0 0 14px; background: var(--background-primary); }
+.ambraia-set-group > .setting-item:first-of-type, .ambraia-set-group-title + .setting-item, .ambraia-set-group-desc + .setting-item { border-top: none; }
+.ambraia-set-group-title { font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--text-muted); padding: 10px 0 0; }
+.ambraia-set-group-desc { font-size: var(--font-ui-smaller); color: var(--text-faint); padding: 2px 0 0; }
+.ambraia-set-group .setting-item { padding: 10px 0; }
+.ambraia-sub-setting { padding-left: 1.25em !important; border-top: none !important; padding-top: 4px !important; }
+.ambraia-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--ob-gray-bg); flex-wrap: wrap; }
+.ambraia-seg button { height: 26px; padding: 0 10px; border-radius: 6px; border: none; background: transparent; box-shadow: none; color: var(--text-muted); font-size: var(--font-ui-smaller); cursor: pointer; white-space: nowrap; }
+.ambraia-seg button:hover { color: var(--text-normal); }
+.ambraia-seg button.is-active { background: var(--background-primary); color: var(--text-normal); font-weight: 500; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 0 0 1px var(--ob-border); }
+.ambraia-settings-adv { margin: 0 0 14px; border-radius: 10px; }
+.ambraia-settings-adv > summary { cursor: pointer; color: var(--text-muted); padding: 6px 4px; font-size: var(--font-ui-small); list-style: none; display: flex; align-items: center; gap: 6px; }
+.ambraia-settings-adv > summary::-webkit-details-marker { display: none; }
+.ambraia-settings-adv > summary::before { content: ''; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 0.12s; margin: 0 4px 0 2px; }
+.ambraia-settings-adv[open] > summary::before { transform: rotate(45deg); }
+.ambraia-settings-adv > summary:hover { color: var(--text-normal); }
+.ambraia-settings-adv-body { border: 1px solid var(--background-modifier-border); border-radius: 10px; padding: 2px 14px; margin-top: 4px; }
+.ambraia-settings-adv-body > .setting-item:first-child { border-top: none; }
+.ambraia-settings-keys { margin-bottom: 4px; }
+.ambraia-settings-keys .setting-item { padding: 8px 0; }
+.ambraia-settings-keys .setting-item-control input { width: 150px; }
+.ambraia-settings .ambraia-settings-status { margin: 0 0 14px; }
+.ambraia-target { background: var(--background-primary); border-radius: 10px; margin: 0 0 12px; }
+
+/* ---------- calendar (side panel) */
+.ambraia-calendar { position: relative; padding: 12px 14px 20px; font-size: 13px; container-type: inline-size; --calv-gap: 4px; --calv-radius: 10px; }
+.ambraia-calv-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 12px; min-width: 0; flex-wrap: wrap; row-gap: 6px; }
+.ambraia-calv-title { display: flex; align-items: center; min-width: 0; flex: 1 1 auto; position: relative; }
+.ambraia-calv-month { display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%; min-width: 0; background: transparent; box-shadow: none; border: none; height: auto; padding: 4px 8px; margin-left: -8px; border-radius: 8px; color: var(--text-normal); cursor: pointer; }
+.ambraia-calv-month-name { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ambraia-calv-year { color: var(--text-muted); white-space: nowrap; font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.ambraia-calv-month-caret { display: inline-flex; align-self: center; color: var(--text-faint); }
+.ambraia-calv-month-caret svg { width: 14px; height: 14px; }
+.ambraia-calv-month:hover { background: var(--ob-hover); }
+.ambraia-calv-nav { display: flex; align-items: center; gap: 2px; flex: none; margin-left: auto; }
+.ambraia-calv-btn { height: 28px; min-width: 28px; padding: 0 6px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: transparent; box-shadow: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12.5px; }
+.ambraia-calv-btn.is-text { padding: 0 10px; border: 1px solid var(--ob-border); color: var(--text-normal); font-weight: 500; }
+.ambraia-calv-btn:hover { background: var(--ob-hover); color: var(--text-normal); }
+.ambraia-calv-btn svg { width: 16px; height: 16px; }
+.ambraia-calv-help { margin-left: 2px; }
+/* first-use guide */
+.ambraia-calv-tips { display: none; margin: 0 0 12px; padding: 10px 12px; border-radius: var(--calv-radius); background: var(--ob-blue-bg); font-size: 12.5px; line-height: 1.45; }
+.ambraia-calv-tips.is-open { display: block; }
+.ambraia-calv-tips-head { display: flex; align-items: center; gap: 6px; font-weight: 600; margin-bottom: 4px; color: var(--text-normal); }
+.ambraia-calv-tips-icon { display: inline-flex; color: var(--ob-blue); }
+.ambraia-calv-tips-icon svg { width: 15px; height: 15px; }
+.ambraia-calv-tips-close { margin-left: auto; height: 22px; width: 22px; padding: 0; background: transparent; box-shadow: none; }
+.ambraia-calv-tips ul { margin: 0; padding-left: 18px; color: var(--text-muted); }
+.ambraia-calv-tips li { margin: 2px 0; }
+/* grid */
+.ambraia-calv-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--calv-gap); outline: none; border-radius: var(--calv-radius); }
+.ambraia-calv-grid:focus-visible { box-shadow: 0 0 0 2px rgba(35, 131, 226, 0.4); }
+.ambraia-calv-grid.has-weeks { grid-template-columns: 24px repeat(7, minmax(0, 1fr)); }
+.ambraia-calv-dow { text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--text-faint); padding: 2px 0 6px; text-transform: uppercase; }
+.ambraia-calv-wk { font-size: 10px; color: var(--text-faint); display: flex; align-items: center; justify-content: center; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.ambraia-calv-wk.is-clickable { cursor: pointer; }
+.ambraia-calv-wk.is-clickable:hover { background: var(--ob-hover); color: var(--text-normal); }
+.ambraia-calv-wk.has-note { color: var(--ob-blue); font-weight: 600; }
+.ambraia-calv-day { min-height: 38px; aspect-ratio: 1 / 1; border-radius: var(--calv-radius); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 4px; gap: 3px; position: relative; overflow: hidden; background: var(--background-secondary); transition: background 0.12s, box-shadow 0.12s; }
+.ambraia-calv-day:hover { background: var(--ob-hover); box-shadow: inset 0 0 0 1px var(--ob-border); }
+.ambraia-calv-day.is-other { background: transparent; color: var(--text-faint); }
+.ambraia-calv-day.is-weekend:not(.is-other) .ambraia-calv-num { color: var(--text-muted); }
+.ambraia-calv-num { font-size: 12.5px; line-height: 22px; min-width: 22px; height: 22px; text-align: center; border-radius: 11px; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.ambraia-calv-day.is-today .ambraia-calv-num { background: #eb5757; color: #fff !important; font-weight: 600; padding: 0 5px; }
+.ambraia-calv-day.is-selected { background: var(--ob-blue-bg); box-shadow: inset 0 0 0 1.5px var(--ob-blue); }
+.ambraia-calv-day.has-daily .ambraia-calv-num { font-weight: 700; }
+.ambraia-calv-day.is-active:not(.is-selected) { box-shadow: inset 0 0 0 1px var(--text-faint); }
+.ambraia-calv-day.is-drop { background: rgba(35, 131, 226, 0.14); box-shadow: inset 0 0 0 2px rgba(35, 131, 226, 0.7); }
+.ambraia-calv-dots { display: flex; gap: 3px; height: 6px; }
+.ambraia-calv-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); flex: none; }
+.ambraia-calv-dot.is-daily { background: var(--ob-blue); }
+.ambraia-calv-dot.is-page { background: var(--ob-purple); }
+.ambraia-calv-dot.is-task { background: var(--ob-orange); }
+.ambraia-calv-dot.is-task.is-overdue { background: var(--ob-red); }
+.ambraia-calv-chips { display: none; width: 100%; padding: 0 4px; flex-direction: column; gap: 3px; min-width: 0; }
+.ambraia-calv-chip { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 2px 6px; border-radius: 5px; background: var(--ob-purple-bg); font-size: 11px; line-height: 16px; color: var(--text-normal); cursor: grab; }
+.ambraia-calv-chip:hover { filter: brightness(0.97); }
+.ambraia-calv-chip.is-task { background: var(--ob-orange-bg); }
+.ambraia-calv-day.is-past .ambraia-calv-chip.is-task { background: var(--ob-red-bg); }
+.ambraia-calv-chip-icon { display: inline-flex; flex: none; font-size: 10px; }
+.ambraia-calv-chip-icon svg { width: 10px; height: 10px; }
+.ambraia-calv-chip-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ambraia-calv-more { font-size: 10px; color: var(--text-faint); padding: 0 6px; }
+/* legend: what the dots mean */
+.ambraia-calv-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 2px 0 8px; font-size: 11.5px; color: var(--text-muted); }
+.ambraia-calv-legend-item { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+/* wide panel: the month shows chips instead of dots */
+@container (min-width: 520px) {
+	.ambraia-calv-grid .ambraia-calv-day { aspect-ratio: auto; min-height: 92px; align-items: stretch; padding-top: 6px; }
+	.ambraia-calv-grid .ambraia-calv-num { align-self: flex-end; margin-right: 6px; }
+	.ambraia-calv-grid .ambraia-calv-dots { display: none; }
+	.ambraia-calv-grid .ambraia-calv-chips { display: flex; }
+}
+/* week: one row per day, with its pages and tasks */
+/* month / year picker */
+.ambraia-calv-pop { position: absolute; z-index: 20; top: 48px; left: 10px; width: 236px; padding: 10px; border-radius: 12px; background: var(--background-primary); box-shadow: var(--ob-shadow); }
+.ambraia-calv-pop-head { display: flex; align-items: center; justify-content: space-between; font-weight: 600; margin-bottom: 8px; }
+.ambraia-calv-pop-head button { height: 26px; width: 26px; padding: 0; background: transparent; box-shadow: none; }
+.ambraia-calv-pop-head button.ambraia-calv-pop-year { width: auto; padding: 0 10px; border-radius: 8px; font-weight: 600; font-size: 13.5px; color: var(--text-normal); cursor: pointer; font-variant-numeric: tabular-nums; }
+.ambraia-calv-pop-head button.ambraia-calv-pop-year:hover { background: var(--ob-hover); color: var(--ob-blue); }
+.ambraia-calv-pop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ambraia-calv-pop-grid button { height: 32px; padding: 0; border-radius: 8px; background: transparent; box-shadow: none; border: none; text-transform: capitalize; font-size: 12.5px; color: var(--text-normal); cursor: pointer; }
+.ambraia-calv-pop-grid button:hover { background: var(--ob-hover); }
+.ambraia-calv-pop-grid button.is-now { color: #eb5757; font-weight: 600; }
+.ambraia-calv-pop-grid button.is-active { background: var(--ob-blue-bg); color: var(--ob-blue); font-weight: 600; }
+/* agenda of the selected day: a card */
+.ambraia-calv-agenda { margin-top: 16px; padding: 14px 12px 12px; border-radius: 12px; background: var(--background-secondary); border: 1px solid var(--ob-border); }
+.ambraia-calv-agenda-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 2px 10px; }
+.ambraia-calv-agenda-title { font-weight: 700; font-size: 15px; text-transform: capitalize; letter-spacing: -0.01em; }
+.ambraia-calv-agenda-rel { color: var(--text-muted); font-size: 11.5px; padding: 1px 8px; border-radius: 10px; background: var(--ob-hover); white-space: nowrap; }
+.ambraia-calv-agenda-rel.is-today { background: #eb5757; color: #fff; font-weight: 600; }
+.ambraia-calv-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.ambraia-calv-action { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 8px; font-size: 12.5px; cursor: pointer; background: var(--background-primary); border: 1px solid var(--ob-border); box-shadow: none; color: var(--text-normal); }
+.ambraia-calv-action:hover { background: var(--ob-hover); }
+.ambraia-calv-action.mod-cta { background: var(--ob-blue-bg); border-color: transparent; color: var(--ob-blue); font-weight: 500; }
+.ambraia-calv-action-icon { display: inline-flex; }
+.ambraia-calv-action-icon svg { width: 15px; height: 15px; }
+.ambraia-calv-section { margin-top: 14px; }
+.ambraia-calv-sec { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 2px 4px; }
+.ambraia-calv-sec-icon { display: inline-flex; color: var(--text-faint); }
+.ambraia-calv-sec-icon svg { width: 13px; height: 13px; }
+.ambraia-calv-count { margin-left: auto; min-width: 18px; height: 18px; padding: 0 6px; border-radius: 9px; background: var(--ob-hover); color: var(--text-muted); font-size: 10.5px; display: inline-flex; align-items: center; justify-content: center; letter-spacing: 0; }
+.ambraia-calv-empty { color: var(--text-faint); font-size: 12px; padding: 8px 4px 0; }
+.ambraia-calv-empty + .ambraia-calv-section { margin-top: 4px; }
+.ambraia-calv-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; cursor: pointer; min-width: 0; }
+.ambraia-calv-row:hover { background: var(--ob-hover); }
+.ambraia-calv-row[draggable='true'] { cursor: grab; }
+.ambraia-calv-row-icon { display: inline-flex; color: var(--text-muted); flex: none; width: 16px; justify-content: center; }
+.ambraia-calv-row-icon svg { width: 15px; height: 15px; }
+.ambraia-calv-row-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ambraia-calv-row-src { color: var(--text-faint); font-size: 11px; flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ambraia-calv-task.is-done .ambraia-calv-row-label { text-decoration: line-through; color: var(--text-faint); }
+.ambraia-calv-task input { margin: 0; flex: none; }
+.ambraia-calv-row.is-empty { color: var(--text-faint); }
+.ambraia-calv-quick { cursor: text; margin-top: 2px; border: 1px dashed var(--ob-border); }
+.ambraia-calv-quick:focus-within { border-style: solid; border-color: var(--ob-blue); background: var(--background-primary); }
+.ambraia-calv-quick input { flex: 1; min-width: 0; height: 22px; border: none; background: transparent; box-shadow: none; padding: 0; font-size: 13px; }
+.ambraia-calv-quick input:focus { box-shadow: none; }
+.ambraia-calv-overdue { margin: 12px 0 0; padding: 6px 8px 8px; border-radius: 10px; background: var(--ob-red-bg); }
+.ambraia-calv-overdue > summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--ob-red); padding: 2px 2px 4px; }
+.ambraia-calv-overdue .ambraia-calv-row:hover { background: rgba(0, 0, 0, 0.04); }
+.ambraia-calv-touched { margin-top: 14px; }
+.ambraia-calv-touched summary { cursor: pointer; color: var(--text-muted); font-size: 12px; padding: 2px; }
+.ambraia-calendar.is-dragging .ambraia-calv-day:not(.is-drop) { box-shadow: inset 0 0 0 1px var(--ob-border); }
+
+/* ---------- canvas */
+.ambraia-canvas-tools .canvas-control-item svg { width: 16px; height: 16px; }
+.ambraia-canvas-icon { display: inline-flex; margin-right: 4px; vertical-align: -2px; }
+.ambraia-canvas-icon img { width: 14px; height: 14px; object-fit: cover; border-radius: 2px; }
+.ambraia-canvas-icon svg { width: 13px; height: 13px; }
+body.ambraia-theme .canvas-node-container { border-radius: 10px; }
+body.ambraia-theme .canvas-node-label { font-weight: 500; }
+body.ambraia-theme .canvas-controls .canvas-control-group { border-radius: 8px; box-shadow: var(--ob-shadow); border: none; }
+
+/* ---------- toolbar: AI button stands apart as the last one */
+.ambraia-selection-bar .ambraia-bar-btn:last-child:has(svg.lucide-sparkles) { color: #9065b0; }
+
+/* ---------- settings 1.0: one consistent card style for every tab */
+.ambraia-settings .ambraia-set-group,
+.ambraia-settings .ambraia-settings-adv-body { padding: 2px 16px; }
+.ambraia-settings .ambraia-set-group .setting-item,
+.ambraia-settings .ambraia-settings-adv-body .setting-item {
+	background: transparent; border: none; border-radius: 0; margin: 0; padding: 12px 0;
+	border-top: 1px solid var(--background-modifier-border); align-items: center; gap: 16px;
+}
+.ambraia-settings .ambraia-set-group .setting-item::before,
+.ambraia-settings .ambraia-settings-adv-body .setting-item::before { display: none; }
+.ambraia-settings .ambraia-set-group > .setting-item:first-child,
+.ambraia-settings .ambraia-set-group-title + .setting-item,
+.ambraia-settings .ambraia-set-group-desc + .setting-item,
+.ambraia-settings .ambraia-settings-adv-body > .setting-item:first-child { border-top: none; }
+.ambraia-settings .ambraia-set-group-title { padding: 12px 0 2px; }
+.ambraia-settings .ambraia-set-group-desc { padding: 0 0 4px; }
+.ambraia-settings .setting-item-info { flex: 1 1 auto; min-width: 0; }
+.ambraia-settings .setting-item-name { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ambraia-settings .setting-item-description { padding-top: 3px; line-height: 1.45; }
+.ambraia-settings .setting-item-control { flex: 0 0 auto; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.ambraia-settings .setting-item-control input[type='text'], .ambraia-settings .setting-item-control input[type='number'] { width: 160px; }
+.ambraia-settings .ambraia-settings-adv > summary { padding: 4px 2px 6px; }
+
+/* sync: status card */
+.ambraia-set-status-card .ambraia-set-status-row { display: block; padding: 14px 0 12px; }
+.ambraia-set-status-card .ambraia-set-status-row .setting-item-info { margin-bottom: 0; }
+.ambraia-set-status-card .ambraia-set-status-row:has(.setting-item-control button) { display: flex; }
+.ambraia-set-status-card .ambraia-settings-status { margin: 0; padding: 10px 12px; background: var(--ob-gray-bg); border-radius: 8px; font-weight: 500; }
+.ambraia-set-status-card .ambraia-set-status-row .setting-item-description { padding: 6px 2px 0; }
+
+/* sync: one row per cloud service inside the "Servizi cloud" card */
+.ambraia-target-list .ambraia-target .setting-item { border-top: none; }
+.ambraia-target-list .ambraia-target-head .setting-item-name { font-weight: 600; }
+.ambraia-target-list .ambraia-target-health { padding: 0 0 8px 16px; }
+.ambraia-target-list .ambraia-target-body { padding: 0 0 10px; }
+.ambraia-target-list .ambraia-target-body > summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px 8px 0; }
+.ambraia-target-list .ambraia-target-body > summary::-webkit-details-marker { display: none; }
+.ambraia-target-list .ambraia-target-body > summary::before { content: ''; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 0.12s; margin: 0 4px 0 2px; }
+.ambraia-target-list .ambraia-target-body[open] > summary::before { transform: rotate(45deg); }
+.ambraia-target-list .ambraia-target-body > summary:hover { color: var(--text-normal); }
+.ambraia-target-list .ambraia-target-body[open] { background: var(--ob-gray-bg); border-radius: 8px; padding: 2px 12px 8px; margin: 0 0 12px; }
+.ambraia-target-list .ambraia-target-body[open] > summary { padding-top: 8px; }
+.ambraia-target-list .ambraia-target-body .setting-item { border-top: 1px solid var(--background-modifier-border); }
+.ambraia-target-list .ambraia-target-add { border-top: 1px solid var(--background-modifier-border) !important; }
+
+/* danger zone */
+.ambraia-set-danger { border-color: rgba(224, 62, 62, 0.35); }
+.ambraia-set-danger .ambraia-set-group-title { color: var(--ob-red, #e03e3e); }
+
+/* footer: who made it on the left, actions on the right */
+
+/* master key: acknowledgement and reminders */
+.ambraia-key-ack { margin: 10px 0 4px; padding: 10px 12px; border-radius: 8px; background: rgba(217, 115, 13, 0.08); border: 1px solid rgba(217, 115, 13, 0.25); transition: box-shadow 0.15s; }
+.ambraia-key-ack.is-required { box-shadow: 0 0 0 2px var(--ob-orange, #d9730d); }
+.ambraia-key-ack-warn, .ambraia-key-reminder { display: flex; gap: 8px; align-items: flex-start; font-size: var(--font-ui-small); line-height: 1.45; color: var(--text-normal); }
+.ambraia-key-ack-icon { flex: none; display: inline-flex; color: var(--ob-orange, #d9730d); padding-top: 1px; }
+.ambraia-key-ack-icon svg { width: 15px; height: 15px; }
+.ambraia-key-ack .ambraia-risk-check { margin-top: 8px; padding-left: 23px; }
+.ambraia-key-reminder.is-inline { margin: 2px 0 8px; padding: 8px 10px; border-radius: 8px; background: rgba(217, 115, 13, 0.08); color: var(--text-muted); font-size: var(--font-ui-smaller); }
+
+/* risk confirmation */
+.ambraia-risk-modal { width: min(500px, 94vw); }
+.ambraia-risk-modal .modal-title { text-align: left; }
+.ambraia-risk-head { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: rgba(224, 62, 62, 0.07); }
+.ambraia-risk-icon { flex: none; display: inline-flex; color: var(--ob-red, #e03e3e); padding-top: 1px; }
+.ambraia-risk-icon svg { width: 16px; height: 16px; }
+.ambraia-risk-intro { font-weight: 500; }
+.ambraia-risk-list { margin: 10px 0 12px; padding-left: 22px; line-height: 1.5; font-size: var(--font-ui-small); }
+.ambraia-risk-list li { margin: 4px 0; }
+.ambraia-risk-sub { font-size: var(--font-ui-smaller); font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 8px; }
+.ambraia-risk-list.is-keep { list-style: none; padding-left: 0; }
+.ambraia-risk-list.is-keep li { position: relative; padding-left: 22px; color: var(--text-muted); }
+.ambraia-risk-list.is-keep li::before { content: ""; position: absolute; left: 4px; top: 0.45em; width: 9px; height: 5px; border-left: 2px solid var(--color-green); border-bottom: 2px solid var(--color-green); transform: rotate(-45deg); }
+.ambraia-risk-checks { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 6px; }
+.ambraia-risk-check { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; font-size: var(--font-ui-small); line-height: 1.4; }
+.ambraia-risk-check input { flex: none; margin: 2px 0 0; }
+.ambraia-risk-check.is-optional { color: var(--text-muted); }
+.ambraia-risk-modal .modal-button-container { margin-top: 14px; }
+.ambraia-risk-modal button.mod-warning:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* update notice */
+.ambraia-update-notice { display: flex; flex-direction: column; gap: 6px; max-width: 340px; }
+.ambraia-update-title { font-weight: 600; }
+.ambraia-update-desc { font-size: var(--font-ui-small); opacity: 0.85; }
+.ambraia-update-actions { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.ambraia-update-actions button { height: 26px; font-size: var(--font-ui-smaller); }
+.ambraia-set-status-card .ambraia-set-status-row .setting-item-name { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+.ambraia-calendar button.ambraia-calv-month { background: transparent; box-shadow: none; border: none; }
+.ambraia-calendar button.ambraia-calv-month:hover { background: var(--ob-hover, var(--background-modifier-hover)); }
+.ambraia-set-status-row .setting-item-control:empty { display: none; }
+.ambraia-set-status-card .ambraia-set-status-row .setting-item-info { width: 100%; }
+
+/* ---------- support reminder (small, dismissible, bottom corner) ---------- */
+
+/* ------------------------------------------------------------------ settings: floating horizontal tabs */
+.ambraia-set-tabs-wrap {
+	/* scrolls away with the page (not sticky) and sits right under the title of the settings */
+	position: relative; z-index: 1;
+	display: flex; justify-content: center;
+	padding: 0 0 14px; margin: calc(-1 * var(--size-4-3, 12px)) 0 6px;
+}
+.ambraia-set-tabs {
+	position: relative; isolation: isolate;
+	display: flex; gap: 2px; padding: 4px; max-width: 100%;
+	overflow-x: auto; scrollbar-width: none; touch-action: pan-y;
+	border-radius: 999px;
+	/* opaque: the content never shows through */
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 14px rgba(0, 0, 0, 0.08);
+	user-select: none;
+}
+.ambraia-set-tabs::-webkit-scrollbar { display: none; }
+.ambraia-set-tab {
+	position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
+	height: 32px; padding: 0 14px; border-radius: 999px; border: none; box-shadow: none;
+	background: transparent !important; color: var(--text-muted); cursor: pointer; white-space: nowrap;
+	font-size: var(--font-ui-small); font-weight: 500;
+	transition: color 0.2s;
+}
+.ambraia-set-tab:hover, .ambraia-set-tab.is-hover { color: var(--text-normal); }
+.ambraia-set-tab:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 1px; }
+.ambraia-set-tab.is-active { color: var(--text-normal); font-weight: 600; }
+.ambraia-set-tab.is-active .ambraia-set-tab-icon { color: var(--interactive-accent); }
+.ambraia-set-tabs.is-dragging .ambraia-set-tab.is-active:not(.is-hover) { color: var(--text-muted); font-weight: 500; }
+/* "liquid glass" drop under the active tab: slides with a spring, follows the pointer while dragging */
+.ambraia-set-tabs-glider {
+	position: absolute; z-index: 0; top: 4px; bottom: 4px; left: 0; width: 0;
+	border-radius: 999px; pointer-events: none;
+	background:
+		linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.12) 55%, rgba(255, 255, 255, 0.28)),
+		color-mix(in srgb, var(--interactive-accent) 16%, var(--background-primary));
+	border: 1px solid color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+	backdrop-filter: blur(6px) saturate(1.6);
+	transition: transform 0.42s cubic-bezier(0.34, 1.45, 0.5, 1), width 0.32s cubic-bezier(0.34, 1.3, 0.5, 1), scale 0.2s ease;
+}
+.theme-dark .ambraia-set-tabs-glider {
+	background:
+		linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03) 55%, rgba(255, 255, 255, 0.08)),
+		color-mix(in srgb, var(--interactive-accent) 24%, var(--background-secondary));
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.ambraia-set-tabs-glider.is-instant { transition: none; }
+.ambraia-set-tabs.is-dragging .ambraia-set-tabs-glider { transition: width 0.3s, scale 0.2s ease; scale: 1.08 1.14; }
+@media (prefers-reduced-motion: reduce) { .ambraia-set-tabs-glider { transition: none; } }
+.ambraia-set-tab-icon { display: inline-flex; }
+.ambraia-set-tab-icon svg { width: 15px; height: 15px; }
+.ambraia-set-tab-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); flex-shrink: 0; }
+.ambraia-set-tab-dot[data-status='idle'], .ambraia-set-tab-dot[data-status='syncing'] { background: var(--ob-green); }
+.ambraia-set-tab-dot[data-status='offline'], .ambraia-set-tab-dot[data-status='paused'], .ambraia-set-tab-dot[data-status='locked'], .ambraia-set-tab-dot[data-status='full'] { background: var(--ob-orange); }
+.ambraia-set-tab-dot.is-warning { background: var(--ob-red); }
+
+.ambraia-set-panel { min-height: 120px; }
+/* phones: icons + short labels, the bar scrolls sideways if needed */
+.is-mobile .ambraia-set-tabs-wrap { padding-top: 6px; }
+.is-mobile .ambraia-set-tab { height: 34px; padding: 0 12px; }
+@media (max-width: 560px) {
+	.ambraia-set-tabs-wrap { justify-content: flex-start; }
+	.ambraia-set-tab:not(.is-active) .ambraia-set-tab-label { display: none; }
+}
+
+
+/* ------------------------------------------------------------------ settings: credits */
+.ambraia-set-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; margin: 28px 0 8px; padding: 14px 16px; border-radius: 12px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); font-size: var(--font-ui-smaller); color: var(--text-muted); }
+.ambraia-set-footer-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ambraia-set-footer-logo { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 9px; color: #fff; background: linear-gradient(135deg, #f0a43a, #d9692b); flex: none; }
+.ambraia-set-footer-logo svg { width: 17px; height: 17px; }
+.ambraia-set-footer-name { color: var(--text-normal); font-weight: 600; font-size: var(--font-ui-small); }
+.ambraia-set-footer-by { color: var(--text-faint); }
+.ambraia-set-footer-links { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+.ambraia-set-footer-link { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: 7px; color: var(--text-muted) !important; text-decoration: none !important; }
+.ambraia-set-footer-link:hover { background: var(--background-modifier-hover); color: var(--text-normal) !important; }
+.ambraia-set-footer-link svg { width: 14px; height: 14px; }
+.ambraia-donate { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 7px; border: 1px solid var(--background-modifier-border); background: var(--background-primary); color: var(--text-normal) !important; text-decoration: none !important; font-weight: 500; }
+.ambraia-donate:hover { background: var(--background-modifier-hover); }
+.ambraia-donate-icon { display: inline-flex; color: #d9692b; }
+.ambraia-donate-icon svg { width: 14px; height: 14px; }
+@media (max-width: 560px) { .ambraia-set-footer-links { margin-left: 0; } }
+.ambraia-set-reset { margin-top: 18px; border-top: 1px solid var(--background-modifier-border); padding-top: 14px; }
+
+/* ------------------------------------------------------------------ brand marks */
+.ambraia-brand { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; border-radius: 9px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); color: var(--text-normal); }
+.ambraia-brand svg { width: 18px; height: 18px; }
+.ambraia-brand.is-initial { background: var(--ambraia-brand, var(--interactive-accent)); border-color: transparent; color: #fff; font-weight: 700; font-size: 15px; }
+.ambraia-brand.is-inline { width: 22px; height: 22px; border-radius: 6px; margin-right: 8px; vertical-align: middle; font-size: 11px; }
+.ambraia-brand.is-inline svg { width: 14px; height: 14px; }
+.ambraia-brand-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ambraia-brand-strip .ambraia-brand { width: 28px; height: 28px; }
+.ambraia-provider { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; border-left: 1px solid var(--ob-border) !important; transition: border-color .15s, background-color .15s; }
+.ambraia-provider .ambraia-provider-mark { grid-row: span 3; }
+.ambraia-ai-card-icon.has-mark { background: transparent !important; padding: 0; }
+.ambraia-ai-card-icon.has-mark .ambraia-brand { width: 100%; height: 100%; }
+.ambraia-ai-model-row .setting-item-name { display: flex; align-items: center; }
+.trademark-note, .ambraia-trademark { font-size: 11px; color: var(--text-faint); margin-top: 8px; }
+
+/* ------------------------------------------------------------------ sync: service cards */
+.ambraia-target { border: 1px solid var(--background-modifier-border); border-radius: 14px; padding: 4px 14px 8px; margin: 10px 0 12px; background: var(--background-primary); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); position: relative; overflow: hidden; }
+.ambraia-target::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--ambraia-provider, var(--interactive-accent)); opacity: 0.85; }
+.ambraia-target .setting-item { border-top: none; padding: 10px 0; }
+.ambraia-target .ambraia-target-head { gap: 12px; padding-top: 14px; }
+.ambraia-target-head .setting-item-name { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: var(--font-ui-medium); }
+.ambraia-target-mark { width: 38px; height: 38px; border-radius: 11px; }
+.ambraia-target-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.ambraia-chip { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: var(--background-secondary); color: var(--text-muted); font-size: 11.5px; max-width: 100%; }
+.ambraia-chip span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ambraia-chip-icon { display: inline-flex; }
+.ambraia-chip-icon svg { width: 12px; height: 12px; }
+.ambraia-chip.mod-ok { color: var(--color-green, #2e9e5b); background: rgba(46, 158, 91, 0.1); }
+.ambraia-chip.mod-warn { color: var(--color-orange, #d9822b); background: rgba(217, 130, 43, 0.1); }
+.ambraia-target-row { border-top: 1px solid var(--background-modifier-border) !important; }
+.ambraia-target .ambraia-settings-adv { margin: 4px 0 2px; }
+.ambraia-role-chip { display: inline-block; margin-left: 8px; padding: 0 7px; height: 18px; line-height: 18px; border-radius: 999px; font-size: 10.5px; font-weight: 600; vertical-align: 1px; background: var(--background-modifier-hover); color: var(--text-muted); }
+.ambraia-role-chip.is-unverified { background: rgba(var(--color-orange-rgb), 0.16); color: var(--text-warning); }
+.ambraia-device-remove { margin-left: auto; }
+.ambraia-set-group-title .ambraia-help-btn { vertical-align: middle; margin-left: 4px; }
+
+/* ------------------------------------------------------------------ pairing: approval */
+.ambraia-pair-check { font-family: var(--font-monospace); font-size: 26px; font-weight: 700; letter-spacing: 0.12em; text-align: center; margin: 10px 0; padding: 10px; border-radius: 12px; background: var(--background-secondary); color: var(--text-normal); }
+.ambraia-pair-wait { display: flex; flex-direction: column; gap: 4px; }
+.ambraia-pair-approve { text-align: center; }
+.ambraia-pair-approve h3 { margin: 6px 0 4px; }
+.ambraia-pair-approve p { color: var(--text-muted); margin: 0 0 6px; }
+.ambraia-pair-approve-icon { display: inline-flex; padding: 12px; border-radius: 14px; background: color-mix(in srgb, var(--interactive-accent) 12%, transparent); color: var(--interactive-accent); }
+.ambraia-pair-approve-icon svg { width: 26px; height: 26px; }
+
+/* ------------------------------------------------------------------ template gallery */
+.ambraia-tpl-modal { width: min(980px, 94vw); max-width: 94vw; height: min(680px, 88vh); padding: 0; display: flex; flex-direction: column; }
+.ambraia-tpl-modal .modal-title { padding: 18px 20px 0; }
+.ambraia-tpl-modal .modal-content { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 10px 0 0; }
+.ambraia-tpl-search { position: relative; margin: 0 20px 12px; }
+.ambraia-tpl-search input { width: 100%; height: 38px; padding-left: 36px; border-radius: 10px; font-size: var(--font-ui-medium); }
+.ambraia-tpl-search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); display: inline-flex; color: var(--text-faint); pointer-events: none; }
+.ambraia-tpl-search-icon svg { width: 16px; height: 16px; }
+.ambraia-tpl-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px minmax(0, 1fr) 270px; border-top: 1px solid var(--background-modifier-border); }
+.ambraia-tpl-nav { overflow-y: auto; padding: 10px 8px; border-right: 1px solid var(--background-modifier-border); background: var(--background-secondary); display: flex; flex-direction: column; gap: 1px; }
+.ambraia-tpl-cat { display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 10px; border-radius: 8px; background: transparent; box-shadow: none; border: none; color: var(--text-muted); cursor: pointer; text-align: left; justify-content: flex-start; }
+.ambraia-tpl-cat:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.ambraia-tpl-cat.is-active { background: var(--background-modifier-active-hover, var(--background-modifier-hover)); color: var(--text-normal); font-weight: 600; }
+.ambraia-tpl-cat-icon { display: inline-flex; flex: none; }
+.ambraia-tpl-cat-icon svg { width: 15px; height: 15px; }
+.ambraia-tpl-cat-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ambraia-tpl-cat-n { font-size: 11px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.ambraia-tpl-grid { overflow-y: auto; padding: 12px 16px 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; align-content: start; }
+.ambraia-tpl-group { grid-column: 1 / -1; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-faint); margin: 10px 2px 0; }
+.ambraia-tpl-group:first-child { margin-top: 0; }
+.ambraia-tpl-card { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--background-modifier-border); background: var(--background-primary); cursor: pointer; outline: none; transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s; }
+.ambraia-tpl-card:hover { border-color: var(--background-modifier-border-hover); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+.ambraia-tpl-card.is-selected { border-color: var(--interactive-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 25%, transparent); }
+.ambraia-tpl-card-icon { font-size: 20px; line-height: 1; width: 34px; height: 34px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 9px; background: var(--background-secondary); }
+.ambraia-tpl-card-text { min-width: 0; }
+.ambraia-tpl-card-name { font-weight: 600; font-size: var(--font-ui-small); color: var(--text-normal); }
+.ambraia-tpl-card-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ambraia-tpl-empty { grid-column: 1 / -1; color: var(--text-faint); text-align: center; padding: 40px 0; }
+.ambraia-tpl-preview { overflow-y: auto; padding: 18px; border-left: 1px solid var(--background-modifier-border); display: flex; flex-direction: column; gap: 8px; }
+.ambraia-tpl-prev-head { display: flex; align-items: center; gap: 12px; }
+.ambraia-tpl-prev-icon { font-size: 28px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--background-secondary); flex: none; }
+.ambraia-tpl-prev-name { font-weight: 700; font-size: var(--font-ui-medium); }
+.ambraia-tpl-prev-group { font-size: 12px; color: var(--text-faint); }
+.ambraia-tpl-prev-desc { color: var(--text-muted); font-size: var(--font-ui-small); line-height: 1.5; }
+.ambraia-tpl-prev-sub { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-faint); margin-top: 6px; }
+.ambraia-tpl-prev-list { margin: 0; padding-left: 18px; font-size: var(--font-ui-small); color: var(--text-normal); }
+.ambraia-tpl-prev-list li { margin: 2px 0; }
+.ambraia-tpl-prev-facts { font-size: 12px; color: var(--text-faint); }
+.ambraia-tpl-use { margin-top: auto; width: 100%; height: 36px; }
+@media (max-width: 820px) {
+	.ambraia-tpl-body { grid-template-columns: 160px minmax(0, 1fr); }
+	.ambraia-tpl-preview { display: none; }
+}
+.is-phone .ambraia-tpl-modal { width: 100vw; height: 100%; }
+.is-phone .ambraia-tpl-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+.is-phone .ambraia-tpl-nav { flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--background-modifier-border); padding: 6px 8px; }
+.is-phone .ambraia-tpl-cat { width: auto; flex: none; }
+.is-phone .ambraia-tpl-grid { grid-template-columns: 1fr; }
+
+/* ------------------------------------------------------------------ ribbon shortcuts */
+.ambraia-ribbon-custom svg { width: var(--icon-size); height: var(--icon-size); }
+.ambraia-set-status-card .ambraia-set-status-row .ambraia-settings-status { flex: 1 1 auto; min-width: 0; }
+
+/* pairing: code window */
+.ambraia-pair-steps { margin: 0 0 12px; padding-inline-start: 1.3em; line-height: 1.5; }
+.ambraia-pair-steps li + li { margin-top: 4px; }
+.ambraia-pair-code-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 4px; padding: 14px 12px; border-radius: 12px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); }
+.ambraia-pair-code { font-family: var(--font-monospace); font-size: 1.9em; font-weight: 700; letter-spacing: .14em; user-select: all; -webkit-user-select: all; }
+.ambraia-pair-timer { text-align: center; font-size: var(--font-ui-smaller); color: var(--text-muted); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+.ambraia-pair .ambraia-settings-details { margin: 6px 0; }
+.ambraia-pair .ambraia-settings-details > summary { cursor: pointer; color: var(--text-muted); font-size: var(--font-ui-small); }
+.ambraia-pair-client { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; flex-wrap: wrap; }
+.ambraia-pair-client code { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; padding: 4px 8px; border-radius: 6px; background: var(--background-secondary); }
+.ambraia-pair-input { display: block; width: 100%; max-width: 240px; margin: 8px auto; text-align: center; font-family: var(--font-monospace); font-size: 1.4em !important; height: 44px !important; letter-spacing: .12em; text-transform: uppercase; }
+.ambraia-pair-input::placeholder { letter-spacing: normal; text-transform: none; font-family: var(--font-interface); font-size: 15px; }
+.ambraia-pair-wait { text-align: center; color: var(--text-muted); }
+.ambraia-pair-wait-title { font-weight: 600; color: var(--text-normal); margin-bottom: 4px; }
+
+/* device list */
+.ambraia-device-list { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 8px; }
+.ambraia-device { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px; }
+.ambraia-device:hover { background: var(--background-modifier-hover); }
+.ambraia-device.is-self { background: var(--background-secondary); }
+.ambraia-device-icon { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: var(--background-modifier-hover); color: var(--text-muted); }
+.ambraia-device-icon svg { width: 18px; height: 18px; }
+.ambraia-device-text { flex: 1 1 auto; min-width: 0; }
+.ambraia-device-name { font-size: var(--font-ui-small); font-weight: 500; overflow-wrap: anywhere; }
+.ambraia-device-meta { font-size: var(--font-ui-smaller); color: var(--text-muted); margin-top: 1px; }
+.ambraia-device-meta.mod-warning { color: var(--text-warning); }
+.ambraia-device > .clickable-icon { flex: 0 0 auto; }
+.ambraia-device-empty { padding: 8px 10px; font-size: var(--font-ui-small); color: var(--text-muted); }
+.ambraia-device-note { font-size: var(--font-ui-smaller); color: var(--text-muted); padding: 2px 10px 8px; line-height: 1.45; }
+.ambraia-provider:not(.is-disabled):hover, .ambraia-provider:focus-visible { border-color: color-mix(in srgb, var(--ambraia-provider, var(--interactive-accent)) 55%, var(--ob-border)) !important; }
+
+/* ---------------------------------------------------------------- shared links */
+.ambraia-share-modal .modal-content { display: flex; flex-direction: column; gap: var(--size-4-2); }
+.ambraia-share-section { font-weight: var(--font-semibold); color: var(--text-muted); font-size: var(--font-ui-small); text-transform: uppercase; letter-spacing: .04em; margin-top: var(--size-4-2); }
+.ambraia-share-list { display: flex; flex-direction: column; gap: var(--size-2-2); }
+.ambraia-share-row { display: flex; align-items: center; gap: var(--size-4-2); padding: var(--size-2-3) var(--size-4-2); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); }
+.ambraia-share-row-icon { color: var(--text-muted); display: flex; }
+.ambraia-share-row-text { flex: 1; min-width: 0; }
+.ambraia-share-row-title { font-weight: var(--font-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ambraia-share-row-meta { color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.ambraia-share-row-actions { display: flex; gap: var(--size-2-1); flex-shrink: 0; }
+.ambraia-share-chip { display: inline-block; margin-inline-start: var(--size-2-2); padding: 0 var(--size-2-2); border-radius: var(--radius-s); background: var(--background-modifier-hover); color: var(--text-muted); font-size: var(--font-ui-smaller); font-weight: normal; }
+.ambraia-share-kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--size-4-2); }
+.ambraia-share-kind { display: flex; gap: var(--size-4-2); padding: var(--size-4-3); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); cursor: pointer; }
+.ambraia-share-kind:hover { background: var(--background-modifier-hover); }
+.ambraia-share-kind.is-active { border-color: var(--interactive-accent); box-shadow: 0 0 0 1px var(--interactive-accent); }
+.ambraia-share-kind:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+.ambraia-share-kind-icon { color: var(--text-accent); display: flex; padding-top: 2px; }
+.ambraia-share-kind-name { font-weight: var(--font-semibold); }
+.ambraia-share-kind-desc { color: var(--text-muted); font-size: var(--font-ui-small); }
+.ambraia-share-note { color: var(--text-muted); font-size: var(--font-ui-small); background: var(--background-secondary); border-radius: var(--radius-m); padding: var(--size-2-3) var(--size-4-3); }
+.ambraia-share-note p { margin: 0; }
+.ambraia-share-status { color: var(--text-muted); font-size: var(--font-ui-small); min-height: 1.2em; }
+.ambraia-share-status:empty { display: none; }
+.ambraia-share-result { display: flex; gap: var(--size-4-2); }
+.ambraia-share-link { width: 100%; font-family: var(--font-monospace); font-size: var(--font-ui-small); }
+.ambraia-share-tips { color: var(--text-muted); font-size: var(--font-ui-small); margin: 0; padding-inline-start: var(--size-4-5); }
+.ambraia-share-empty { color: var(--text-muted); text-align: center; padding: var(--size-4-6) 0; }
+.ambraia-share-rendered { max-height: 50vh; overflow-y: auto; user-select: text; }
+.ambraia-share-rendered .callout-title { font-weight: var(--font-semibold); }
+.ambraia-share-chip.is-ok { background: rgba(var(--color-green-rgb), .15); color: var(--color-green); }
+.ambraia-share-chip.is-warn { background: rgba(var(--color-orange-rgb), .15); color: var(--color-orange); }
+.ambraia-folder-found { margin: var(--size-2-2) 0 var(--size-4-2); }
+.ambraia-folder-chips { display: flex; flex-wrap: wrap; gap: var(--size-2-2); margin-top: var(--size-2-2); }
+.ambraia-folder-chip { font-size: var(--font-ui-small); }
+.ambraia-folder-chip.is-active { background: var(--interactive-accent); color: var(--text-on-accent); }
+.ambraia-folder-who { opacity: .8; }
+.ambraia-share-profile { border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); padding: 0 var(--size-4-3); margin-bottom: var(--size-4-2); }
+.ambraia-share-profile .setting-item:first-child { border-top: none; }
+.ambraia-share-editor { width: 100%; min-height: 40vh; font-family: var(--font-monospace); }

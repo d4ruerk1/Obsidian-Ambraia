@@ -1,0 +1,46 @@
+{
+  "name": "ambraia",
+  "version": "1.0.0",
+  "description": "Add page icons and covers, databases, a calendar, templates, slash and @ menus, optional end-to-end encrypted multi-cloud sync and an optional AI assistant (off by default).",
+  "main": "main.js",
+  "author": "d4ruerk1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/d4ruerk1/Obsidian-Ambraia.git"
+  },
+  "homepage": "https://github.com/d4ruerk1/Obsidian-Ambraia#readme",
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "templates",
+    "sync",
+    "calendar",
+    "database",
+    "ai"
+  ],
+  "scripts": {
+    "build": "tsc --noEmit && node esbuild.config.mjs production",
+    "release": "npm run build && node scripts/release.mjs",
+    "dev": "node esbuild.config.mjs",
+    "test": "vitest run",
+    "i18n": "python3 scripts/i18n_extract.py && python3 scripts/i18n_translate.py && node scripts/i18n_pack.mjs"
+  },
+  "devDependencies": {
+    "@codemirror/language": "6.12.4",
+    "@codemirror/state": "6.5.0",
+    "@codemirror/view": "6.38.6",
+    "@noble/ciphers": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
+    "@types/node": "26.6.4",
+    "builtin-modules": "5.4.0",
+    "esbuild": "0.28.2",
+    "jsdom": "29.1.1",
+    "obsidian": "1.13.1",
+    "tslib": "2.8.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.2",
+    "vitest": "5.0.3",
+    "yaml": "2.9.1"
+  }
+}

@@ -1,0 +1,7 @@
+{
+	"_readme": "Copy to apps.json, fill in the apps you registered (see README → Built-in sign-in) and run npm run build. Users will only see a 'Sign in' button.",
+	"gdrive": { "clientId": "1234567890-xxxx.apps.googleusercontent.com", "clientSecret": "GOCSPX-xxxx" },
+	"dropbox": { "clientId": "xxxxxxxxxxxxxxx" },
+	"onedrive": { "clientId": "00000000-0000-0000-0000-000000000000" },
+	"pcloud": { "clientId": "xxxxxxxx", "clientSecret": "xxxxxxxx" }
+}
