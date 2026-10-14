@@ -80,7 +80,7 @@ export const PRESETS: ProviderPreset[] = [
 		needsKey: true,
 		keyUrl: 'https://aistudio.google.com/apikey',
 		icon: '🔷',
-		hint: tx('Modelli Gemini di Google (c’è un piano gratuito).'),
+		hint: tx('Modelli Gemini di Google (verifica termini, età e disponibilità regionale).'),
 		supportsEmbeddings: true,
 	},
 	{

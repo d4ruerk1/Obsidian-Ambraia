@@ -288,7 +288,7 @@ const ts = (sec: number) => {
 
 /** Keys and choices for the web tools (from the AI settings and the OS secret storage). */
 export interface WebCtx {
-	/** Google Gemini API key: the video is "watched" by Gemini (official API, free tier available). */
+	/** Google Gemini API key: the video is processed by Gemini through the official API. Age and regional service restrictions apply. */
 	geminiKey?: string;
 	/** YouTube Data API v3 key: title, channel, duration and description. */
 	youtubeKey?: string;
@@ -296,7 +296,7 @@ export interface WebCtx {
 	youtube?: 'auto' | 'title';
 }
 
-/** Gemini model used for YouTube and Google Search: fast and included in the free tier. */
+/** Gemini model used for YouTube and Google Search. Availability and billing depend on Google's current terms. */
 export const GEMINI_TOOL_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest'];
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
@@ -441,7 +441,7 @@ export interface SearchHit {
 export interface SearchOpts {
 	mode: 'off' | 'auto' | 'searxng';
 	searxngUrl?: string;
-	/** Gemini key: in "auto" the search goes through Google Search (Gemini grounding, free tier). */
+	/** Gemini key: in "auto" the search goes through Google Search via Gemini grounding. Age and regional service restrictions apply. */
 	geminiKey?: string;
 	/** Language for the free sources (Wikipedia), e.g. "it". */
 	lang?: string;
@@ -512,7 +512,7 @@ async function freeSearch(query: string, limit: number, lang = 'en'): Promise<Se
 /**
  * Web search, only through official APIs (search engines' result pages are never scraped):
  * - "auto" (default once AI is on): Google Search through Gemini when a Gemini key is set (free
- *   tier), otherwise free sources without keys (DuckDuckGo Instant Answers + Wikipedia);
+ *   access), otherwise free sources without keys (DuckDuckGo Instant Answers + Wikipedia);
  * - "searxng": the JSON API of a SearXNG instance chosen by the user.
  */
 export async function webSearch(o: SearchOpts, query: string, limit = 6): Promise<SearchResult> {

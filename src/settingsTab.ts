@@ -1275,8 +1275,8 @@ export function renderAiSettings(el: HTMLElement, plugin: AmbraiaPlugin, redraw:
 		priv,
 		tx('Ricerca web per l’agente'),
 		hasGemini
-			? tx('Automatica: Ricerca Google tramite la tua chiave Gemini (API ufficiale, piano gratuito). Se la quota finisce, usa le fonti gratuite.')
-			: tx('Automatica: fonti gratuite senza chiave (DuckDuckGo Instant Answers e Wikipedia, API ufficiali). Aggiungi una chiave Gemini gratuita per cercare con Google.'),
+			? tx('Automatica: Ricerca Google tramite la tua chiave Gemini (API ufficiale). Per utenti UE, Svizzera e Regno Unito usa solo Paid Services; Gemini richiede almeno 18 anni. Se la quota finisce, usa le fonti gratuite.')
+			: tx('Automatica: fonti gratuite senza chiave (DuckDuckGo Instant Answers e Wikipedia, API ufficiali). Gemini richiede almeno 18 anni e, per utenti UE, Svizzera e Regno Unito, solo Paid Services.'),
 		[
 			['auto', tx('Automatica')],
 			['searxng', 'SearXNG'],
@@ -1316,7 +1316,7 @@ export function renderAiSettings(el: HTMLElement, plugin: AmbraiaPlugin, redraw:
 			await save();
 		},
 	);
-	keyField(priv, tx('Chiave Google Gemini'), tx('Gratuita su Google AI Studio. Serve per la Ricerca Google e i video YouTube (è la stessa chiave del fornitore Gemini). Sul piano gratuito Google può usare i contenuti inviati per migliorare i suoi servizi: vedi i termini di Gemini API.'), 'gemini', 'https://aistudio.google.com/apikey');
+	keyField(priv, tx('Chiave Google Gemini'), tx('Serve per la Ricerca Google e i video YouTube (è la stessa chiave del fornitore Gemini). Gemini richiede almeno 18 anni; per utenti UE, Svizzera e Regno Unito sono consentiti solo Paid Services. Per tali utenti i dati non vengono usati per migliorare i servizi Google secondo i termini Gemini API applicabili.'), 'gemini', 'https://aistudio.google.com/apikey');
 	if (s.aiYoutube === 'auto') keyField(priv, tx('Chiave YouTube Data API (facoltativa)'), tx('Gratuita da Google Cloud Console (YouTube Data API v3): titolo, durata e descrizione dei video quando non c’è una chiave Gemini.'), 'youtube', 'https://console.cloud.google.com/apis/library/youtube.googleapis.com');
 
 	// semantic search
